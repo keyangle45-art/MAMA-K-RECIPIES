@@ -163,13 +163,33 @@ const STYLES = `
 `;
 
 /* ─── Logo ───────────────────────────────────────────────── */
-const Logo = ({ height = 48, light = false }) => (
-  <img
-    src={light ? "/logo-orange.png" : "/logo-dark.png"}
-    alt="Mama K Recipes"
-    style={{ height: `${height}px`, width: "auto", objectFit: "contain" }}
-  />
-);
+// On dark backgrounds: use real PNG (black bg blends in)
+// On light backgrounds: use SVG (transparent, no box)
+const Logo = ({ height = 48, light = false }) => {
+  if (light) {
+    // Dark background — PNG logo blends perfectly
+    return (
+      <img src="/logo-orange.png" alt="Mama K Recipes"
+        style={{ height: `${height}px`, width: "auto", objectFit: "contain" }} />
+    );
+  }
+  // Light background — transparent SVG to avoid the black box
+  const s = height;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+      <svg width={s * 0.6} height={s} viewBox="0 0 60 100" fill="none">
+        <path d="M30 3C16 18 7 36 7 56c0 22 11 40 23 41 12-1 23-19 23-41 0-20-9-38-23-53z" fill={B.orange}/>
+        <rect x="20" y="38" width="6" height="34" rx="3" fill={B.black} opacity=".85"/>
+        <circle cx="23" cy="32" r="5" fill={B.black} opacity=".85"/>
+        <path d="M34 30v14l7-6v36a3 3 0 01-6 0V38l7 6V30z" fill={B.black} opacity=".85"/>
+      </svg>
+      <div>
+        <div style={{ fontFamily: "'Bebas Neue',Impact,sans-serif", fontSize: s * 0.52, color: B.black, letterSpacing: "0.06em", lineHeight: 1 }}>MAMA K</div>
+        <div style={{ fontFamily: "'DM Sans',sans-serif", fontSize: s * 0.22, color: B.orange, letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 700 }}>RECIPES</div>
+      </div>
+    </div>
+  );
+};
 
 /* ─── Skeleton Card ──────────────────────────────────────── */
 const SkeletonCard = () => (
@@ -242,14 +262,19 @@ const RecipeCard = ({ r, onOpen, bookmarked, onBM, idx = 0, wide = false }) => (
 );
 
 /* ─── Section Row ────────────────────────────────────────── */
+const GUTTER = "40px";
+
 const SectionRow = ({ section, onSelect, bookmarks, onBM }) => {
   const [recipes, setRecipes] = useState({});
   const [loading, setLoading] = useState(false);
   const [revealed, setRevealed] = useState(false);
+  const [canLeft, setCanLeft] = useState(false);
+  const [canRight, setCanRight] = useState(true);
   const ref = useRef();
+  const scrollRef = useRef();
 
   useEffect(() => {
-    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setRevealed(true); }, { threshold: 0.15 });
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setRevealed(true); }, { threshold: 0.1 });
     if (ref.current) obs.observe(ref.current);
     return () => obs.disconnect();
   }, []);
@@ -263,65 +288,141 @@ const SectionRow = ({ section, onSelect, bookmarks, onBM }) => {
       )
     ).then(results => {
       const map = {};
-      results.forEach(r => {
-        if (r.data[0]) map[r.key] = { ...r.data[0], displayLabel: r.label, displayEmoji: r.emoji, region: r.region };
-      });
+      results.forEach(r => { if (r.data[0]) map[r.key] = { ...r.data[0], region: r.region }; });
       setRecipes(map);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, [revealed]);
 
-  const cards = section.searches.map(s => recipes[s.q] || { title: s.label, emoji: s.emoji, region: s.region, _stub: true, _search: s.q, _label: s.label });
+  const updateArrows = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanLeft(el.scrollLeft > 10);
+    setCanRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 10);
+  };
+
+  const scroll = (dir) => {
+    if (!scrollRef.current) return;
+    scrollRef.current.scrollBy({ left: dir * 480, behavior: "smooth" });
+    setTimeout(updateArrows, 400);
+  };
+
+  const cards = section.searches.map(s =>
+    recipes[s.q] || { title: s.label, emoji: s.emoji, region: s.region, _stub: true, _search: s.q, _label: s.label }
+  );
+
+  const arrowStyle = (visible, dark) => ({
+    position: "absolute", top: "50%", transform: "translateY(-50%)",
+    width: "38px", height: "38px", borderRadius: "50%",
+    background: dark ? "rgba(255,255,255,0.12)" : B.white,
+    border: `1px solid ${dark ? "rgba(255,255,255,0.2)" : B.border}`,
+    color: dark ? "#fff" : B.black,
+    backdropFilter: "blur(8px)",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    cursor: "pointer", fontSize: "16px",
+    boxShadow: dark ? "none" : "0 2px 12px rgba(0,0,0,0.1)",
+    opacity: visible ? 1 : 0,
+    pointerEvents: visible ? "auto" : "none",
+    transition: "opacity 0.2s, background 0.2s",
+    zIndex: 10,
+    border: "none",
+  });
 
   return (
-    <div ref={ref} style={{
-      padding: "56px 0",
-      background: section.dark ? B.dark : B.bg,
-    }}>
-      <div style={{ padding: "0 40px", marginBottom: "28px", animation: revealed ? "fadeUp 0.5s ease" : "none" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px" }}>
-          <span style={{ fontSize: "22px" }}>{section.icon}</span>
-          <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "11px", fontWeight: 700, color: B.orange, letterSpacing: "0.14em", textTransform: "uppercase" }}>
-            {section.subtitle}
-          </span>
-        </div>
-        <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "clamp(26px,3vw,38px)", fontWeight: 600, color: section.dark ? B.white : B.black, lineHeight: 1.1 }}>
-          {section.title}
+    <div ref={ref} style={{ padding: "52px 0", background: section.dark ? B.dark : B.bg }}>
+      {/* Section header — aligned to GUTTER */}
+      <div style={{ padding: `0 ${GUTTER}`, marginBottom: "24px", animation: revealed ? "fadeUp 0.5s ease" : "none" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "5px" }}>
+              <span style={{ fontSize: "20px" }}>{section.icon}</span>
+              <span style={{ fontFamily: "'DM Sans',sans-serif", fontSize: "11px", fontWeight: 700, color: B.orange, letterSpacing: "0.14em", textTransform: "uppercase" }}>
+                {section.subtitle}
+              </span>
+            </div>
+            <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: "clamp(24px,3vw,36px)", fontWeight: 600, color: section.dark ? B.white : B.black, lineHeight: 1.1 }}>
+              {section.title}
+            </div>
+          </div>
+          {/* Desktop arrow hints */}
+          <div style={{ display: "flex", gap: "8px" }}>
+            {[{ dir: -1, visible: canLeft }, { dir: 1, visible: canRight }].map(({ dir, visible }) => (
+              <button key={dir} onClick={() => scroll(dir)} style={{
+                width: "36px", height: "36px", borderRadius: "50%", border: `1px solid ${section.dark ? "rgba(255,255,255,0.2)" : B.border}`,
+                background: section.dark ? "rgba(255,255,255,0.08)" : B.white,
+                color: section.dark ? "#fff" : B.black,
+                cursor: "pointer", fontSize: "14px", display: "flex", alignItems: "center", justifyContent: "center",
+                opacity: visible ? 1 : 0.3, transition: "all 0.2s",
+              }}>{dir === -1 ? "←" : "→"}</button>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="scroll-row" style={{ padding: "4px 40px 12px" }}>
-        {loading
-          ? Array(6).fill(0).map((_, i) => <SkeletonCard key={i} />)
-          : cards.map((card, i) => (
-            card._stub
-              ? (
+      {/* Scroll row — starts at GUTTER, arrows overlay edges */}
+      <div style={{ position: "relative" }}>
+        {/* Left fade + arrow */}
+        {canLeft && (
+          <>
+            <div style={{
+              position: "absolute", left: 0, top: 0, bottom: 0, width: "80px", zIndex: 5, pointerEvents: "none",
+              background: `linear-gradient(to right, ${section.dark ? B.dark : B.bg}, transparent)`,
+            }} />
+            <button onClick={() => scroll(-1)} style={{ ...arrowStyle(canLeft, section.dark), left: "16px" }}>←</button>
+          </>
+        )}
+
+        {/* Right fade + arrow */}
+        {canRight && (
+          <>
+            <div style={{
+              position: "absolute", right: 0, top: 0, bottom: 0, width: "80px", zIndex: 5, pointerEvents: "none",
+              background: `linear-gradient(to left, ${section.dark ? B.dark : B.bg}, transparent)`,
+            }} />
+            <button onClick={() => scroll(1)} style={{ ...arrowStyle(canRight, section.dark), right: "16px" }}>→</button>
+          </>
+        )}
+
+        <div
+          ref={scrollRef}
+          onScroll={updateArrows}
+          style={{
+            display: "flex", gap: "14px", overflowX: "auto", overflowY: "visible",
+            paddingLeft: GUTTER, paddingRight: GUTTER, paddingBottom: "12px", paddingTop: "4px",
+            scrollSnapType: "x mandatory", scrollbarWidth: "none",
+          }}
+        >
+          {loading
+            ? Array(6).fill(0).map((_, i) => <SkeletonCard key={i} />)
+            : cards.map((card, i) => (
+              card._stub ? (
                 <div key={i} className="card-hover" onClick={() => onSelect(card._search, card._label)} style={{
-                  width: "220px", background: section.dark ? "rgba(255,255,255,0.06)" : B.white,
+                  width: "220px", flexShrink: 0, background: section.dark ? "rgba(255,255,255,0.06)" : B.white,
                   borderRadius: "18px", overflow: "hidden", cursor: "pointer",
                   border: `1px solid ${section.dark ? "rgba(255,255,255,0.1)" : B.border}`,
+                  scrollSnapAlign: "start",
                   animation: "fadeUp 0.5s ease both", animationDelay: `${i * 50}ms`,
                 }}>
-                  <div style={{
-                    height: "115px", fontSize: "48px",
-                    background: section.dark ? "rgba(255,255,255,0.04)" : B.cream,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                  }}>{card.emoji}</div>
+                  <div style={{ height: "115px", fontSize: "48px", background: section.dark ? "rgba(255,255,255,0.04)" : B.cream, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {card.emoji}
+                  </div>
                   <div style={{ padding: "12px 14px" }}>
-                    <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "15px", fontWeight: 600, color: section.dark ? "#fff" : B.black }}>{card.title}</div>
-                    <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "10px", color: B.muted, marginTop: "4px" }}>{card.region}</div>
+                    <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: "15px", fontWeight: 600, color: section.dark ? "#fff" : B.black }}>{card.title}</div>
+                    <div style={{ fontFamily: "'DM Sans',sans-serif", fontSize: "10px", color: B.muted, marginTop: "4px" }}>{card.region}</div>
                   </div>
                 </div>
+              ) : (
+                <div key={i} style={{ flexShrink: 0, scrollSnapAlign: "start" }}>
+                  <RecipeCard
+                    idx={i} r={card}
+                    onOpen={() => onSelect(section.searches[i]?.q, card.title, card)}
+                    bookmarked={bookmarks.some(b => b.title === card.title)}
+                    onBM={() => onBM(card)}
+                  />
+                </div>
               )
-              : (
-                <RecipeCard
-                  key={i} idx={i} r={{ ...card }}
-                  onOpen={() => onSelect(section.searches[i]?.q, card.title, card)}
-                  bookmarked={bookmarks.some(b => b.title === card.title)}
-                  onBM={() => onBM(card)}
-                />
-              )
-          ))}
+            ))}
+        </div>
       </div>
     </div>
   );
@@ -517,7 +618,7 @@ const Paywall = ({ user, onSignIn, onDismiss }) => (
       )}
 
       {user && (
-        <button onClick={() => alert("Paystack coming soon!")} className="btn-orange" style={{
+        <button onClick={() => alert("Flutterwave coming soon!")} className="btn-orange" style={{
           width: "100%", marginTop: "24px", padding: "15px", borderRadius: "14px",
           fontSize: "15px", boxShadow: `0 8px 28px ${B.orange}44`,
         }}>
@@ -596,7 +697,7 @@ export default function App() {
         position: "sticky", top: 0, zIndex: 90,
         background: "rgba(249,248,245,0.9)", backdropFilter: "blur(24px)",
         borderBottom: `1px solid ${B.border}`,
-        padding: "0 32px", height: "64px",
+        padding: `0 ${GUTTER}`, height: "64px",
         display: "flex", alignItems: "center", justifyContent: "space-between",
       }}>
         <div onClick={() => setView("home")} style={{ cursor: "pointer" }}><Logo height={44} /></div>
@@ -671,7 +772,7 @@ export default function App() {
           {/* CINEMATIC HERO */}
           <div style={{
             background: B.dark, position: "relative", overflow: "hidden",
-            padding: "100px 40px 80px",
+            padding: `100px ${GUTTER} 80px`,
             minHeight: "520px", display: "flex", alignItems: "center",
           }}>
             {/* Decorative orbs */}
@@ -764,7 +865,7 @@ export default function App() {
           </div>
 
           {/* REGIONS BAR */}
-          <div style={{ background: B.white, borderBottom: `1px solid ${B.border}`, padding: "0 40px" }}>
+          <div style={{ background: B.white, borderBottom: `1px solid ${B.border}`, padding: `0 ${GUTTER}` }}>
             <div className="scroll-row" style={{ padding: "16px 0", gap: "10px" }}>
               {REGIONS.map((r, i) => (
                 <button key={r.label} className="pill-hover" onClick={() => doSearch(r.q, r.label)} style={{

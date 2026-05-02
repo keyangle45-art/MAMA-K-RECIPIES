@@ -7,46 +7,100 @@ const B = {
   orange: "#E06612",
   orangeHover: "#F07828",
   black: "#0A0A0A",
-  white: "#FEFEFE",
-  bg: "#F9F8F5",
+  white: "#FFFFFF",
+  bg: "#F5F5F7",       // Apple's exact background gray
   cream: "#F3ECD8",
-  border: "#E8E4DC",
-  muted: "#8A8480",
-  dark: "#141210",
+  border: "#D2D2D7",   // Apple's border color
+  muted: "#86868B",    // Apple's secondary text
+  dark: "#1D1D1F",     // Apple's near-black
+  card: "#FBFBFD",     // Apple card white
 };
 
 /* ─── Data ───────────────────────────────────────────────── */
 const FEATURED_SECTIONS = [
   {
-    id: "african-top",
+    id: "top-african",
     title: "Top African Dishes",
-    subtitle: "Authentic flavours across the continent",
+    subtitle: "Bold, soulful flavours from across the continent",
     icon: "🌍",
     dark: true,
     searches: [
-      { q: "Nigerian Jollof Party Rice", label: "Party Jollof Rice", emoji: "🍛", region: "Nigeria" },
-      { q: "West African Pepper Soup", label: "Pepper Soup", emoji: "🍲", region: "Nigeria" },
-      { q: "Egusi Soup Nigerian", label: "Egusi Soup", emoji: "🥣", region: "Nigeria" },
-      { q: "Ghanaian Kelewele", label: "Kelewele", emoji: "🍌", region: "Ghana" },
-      { q: "Senegalese Thieboudienne", label: "Thieboudienne", emoji: "🐟", region: "Senegal" },
-      { q: "South African Braai", label: "Braai", emoji: "🔥", region: "South Africa" },
+      { q: "Nigerian Jollof Party Rice authentic", label: "Party Jollof Rice", emoji: "🍛", region: "Nigeria" },
+      { q: "West African Egusi Soup", label: "Egusi Soup", emoji: "🥣", region: "Nigeria" },
+      { q: "West African Pepper Soup goat meat", label: "Pepper Soup", emoji: "🍲", region: "Nigeria" },
+      { q: "Ghanaian Kelewele spiced plantain", label: "Kelewele", emoji: "🍌", region: "Ghana" },
+      { q: "Senegalese Thieboudienne fish rice", label: "Thieboudienne", emoji: "🐟", region: "Senegal" },
+      { q: "Ethiopian Doro Wat chicken stew", label: "Doro Wat", emoji: "🫕", region: "Ethiopia" },
+      { q: "South African Bobotie", label: "Bobotie", emoji: "🥘", region: "South Africa" },
+      { q: "Kenyan Nyama Choma grilled meat", label: "Nyama Choma", emoji: "🔥", region: "Kenya" },
     ],
   },
   {
-    id: "world-top",
-    title: "Top Dishes by Nation",
-    subtitle: "Iconic plates every culture is proud of",
-    icon: "🌐",
+    id: "top-american",
+    title: "Top American Dishes",
+    subtitle: "Classic American comfort food, elevated",
+    icon: "🇺🇸",
     dark: false,
     searches: [
-      { q: "Classic Italian Carbonara", label: "Carbonara", emoji: "🍝", region: "Italy" },
-      { q: "American Smash Burgers", label: "Smash Burger", emoji: "🍔", region: "USA" },
-      { q: "British Sunday Roast", label: "Sunday Roast", emoji: "🥩", region: "UK" },
-      { q: "Mexican Birria Tacos", label: "Birria Tacos", emoji: "🌮", region: "Mexico" },
-      { q: "Chinese Peking Duck", label: "Peking Duck", emoji: "🦆", region: "China" },
-      { q: "Japanese Tonkotsu Ramen", label: "Tonkotsu Ramen", emoji: "🍜", region: "Japan" },
-      { q: "Indian Butter Chicken", label: "Butter Chicken", emoji: "🍗", region: "India" },
-      { q: "French Coq au Vin", label: "Coq au Vin", emoji: "🫕", region: "France" },
+      { q: "Classic American Smash Burgers", label: "Smash Burger", emoji: "🍔", region: "USA" },
+      { q: "Southern BBQ Ribs slow cooked", label: "BBQ Ribs", emoji: "🥩", region: "USA" },
+      { q: "New England Clam Chowder", label: "Clam Chowder", emoji: "🍵", region: "New England" },
+      { q: "Southern Fried Chicken crispy", label: "Fried Chicken", emoji: "🍗", region: "South" },
+      { q: "Classic Mac and Cheese homemade", label: "Mac & Cheese", emoji: "🧀", region: "USA" },
+      { q: "New York Style Cheesecake", label: "NY Cheesecake", emoji: "🍰", region: "New York" },
+      { q: "Texas Beef Brisket smoked", label: "Texas Brisket", emoji: "🫕", region: "Texas" },
+      { q: "Classic American Apple Pie", label: "Apple Pie", emoji: "🥧", region: "USA" },
+    ],
+  },
+  {
+    id: "top-british",
+    title: "Top British Dishes",
+    subtitle: "Great British classics worth every bite",
+    icon: "🇬🇧",
+    dark: true,
+    searches: [
+      { q: "British Sunday Roast beef yorkshire pudding", label: "Sunday Roast", emoji: "🥩", region: "England" },
+      { q: "Classic Fish and Chips British", label: "Fish & Chips", emoji: "🐟", region: "England" },
+      { q: "Beef Wellington classic", label: "Beef Wellington", emoji: "🥩", region: "England" },
+      { q: "Traditional British Shepherd's Pie", label: "Shepherd's Pie", emoji: "🫕", region: "England" },
+      { q: "Scottish Haggis traditional", label: "Haggis", emoji: "🏴󠁧󠁢󠁳󠁣󠁴󠁿", region: "Scotland" },
+      { q: "Welsh Rarebit cheese toast", label: "Welsh Rarebit", emoji: "🍞", region: "Wales" },
+      { q: "Classic British Sticky Toffee Pudding", label: "Toffee Pudding", emoji: "🍮", region: "England" },
+      { q: "Full English Breakfast fry up", label: "Full English", emoji: "🍳", region: "England" },
+    ],
+  },
+  {
+    id: "top-european",
+    title: "Top European Dishes",
+    subtitle: "From Paris to Rome — Europe's finest plates",
+    icon: "🇪🇺",
+    dark: false,
+    searches: [
+      { q: "Classic French Coq au Vin", label: "Coq au Vin", emoji: "🍷", region: "France" },
+      { q: "Italian Spaghetti Carbonara authentic", label: "Carbonara", emoji: "🍝", region: "Italy" },
+      { q: "Spanish Paella Valenciana", label: "Paella", emoji: "🥘", region: "Spain" },
+      { q: "German Sauerbraten pot roast", label: "Sauerbraten", emoji: "🥩", region: "Germany" },
+      { q: "Greek Moussaka traditional", label: "Moussaka", emoji: "🫕", region: "Greece" },
+      { q: "Portuguese Bacalhau salt cod", label: "Bacalhau", emoji: "🐟", region: "Portugal" },
+      { q: "Classic French Croissant buttery", label: "Croissant", emoji: "🥐", region: "France" },
+      { q: "Italian Tiramisu classic dessert", label: "Tiramisu", emoji: "🍮", region: "Italy" },
+    ],
+  },
+  {
+    id: "top-asian",
+    title: "Top Asian Dishes",
+    subtitle: "Ancient recipes, extraordinary depth of flavour",
+    icon: "🌏",
+    dark: true,
+    searches: [
+      { q: "Japanese Tonkotsu Ramen authentic", label: "Tonkotsu Ramen", emoji: "🍜", region: "Japan" },
+      { q: "Chinese Peking Duck classic", label: "Peking Duck", emoji: "🦆", region: "China" },
+      { q: "Indian Butter Chicken murgh makhani", label: "Butter Chicken", emoji: "🍗", region: "India" },
+      { q: "Thai Pad Thai authentic street food", label: "Pad Thai", emoji: "🍜", region: "Thailand" },
+      { q: "Korean Beef Bulgogi BBQ", label: "Bulgogi", emoji: "🥩", region: "Korea" },
+      { q: "Vietnamese Pho Bo beef noodle soup", label: "Pho Bo", emoji: "🍲", region: "Vietnam" },
+      { q: "Chinese Dim Sum dumplings", label: "Dim Sum", emoji: "🥟", region: "China" },
+      { q: "Japanese Sushi Rolls homemade", label: "Sushi Rolls", emoji: "🍱", region: "Japan" },
     ],
   },
   {
@@ -54,7 +108,7 @@ const FEATURED_SECTIONS = [
     title: "Legacy Dishes",
     subtitle: "Timeless recipes passed down through generations",
     icon: "🏺",
-    dark: true,
+    dark: false,
     searches: [
       { q: "Classic Beef Wellington", label: "Beef Wellington", emoji: "🥩", region: "Classic" },
       { q: "Traditional Moroccan Tagine", label: "Lamb Tagine", emoji: "🫕", region: "Morocco" },
@@ -69,7 +123,7 @@ const FEATURED_SECTIONS = [
     title: "Healthy & Low Calorie",
     subtitle: "Under 450 calories — nourishing, not boring",
     icon: "🥗",
-    dark: false,
+    dark: true,
     searches: [
       { q: "Low Calorie High Protein Bowls under 400 calories", label: "Protein Bowls", emoji: "🥣", region: "Healthy" },
       { q: "Healthy Vegan Buddha Bowl", label: "Buddha Bowl", emoji: "🥗", region: "Vegan" },
@@ -114,7 +168,7 @@ const REGIONS = [
 ];
 
 /* ─── Helpers ────────────────────────────────────────────── */
-const FREE_LIMIT = 5;
+const FREE_LIMIT = 3;
 const getCount = (uid) => parseInt(localStorage.getItem(`mk_sc_${uid || "guest"}`) || "0");
 const incCount = (uid) => localStorage.setItem(`mk_sc_${uid || "guest"}`, getCount(uid) + 1);
 const getBM = () => JSON.parse(localStorage.getItem("mk_bm") || "[]");
@@ -147,49 +201,47 @@ const STYLES = `
   @keyframes shimmer  { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
   @keyframes spin     { to { transform:rotate(360deg); } }
 
-  .card-hover { transition: transform 0.3s cubic-bezier(0.34,1.4,0.64,1), box-shadow 0.3s ease; }
-  .card-hover:hover { transform: translateY(-6px) scale(1.015); box-shadow: 0 24px 60px rgba(0,0,0,0.13) !important; }
+  .card-hover { transition: transform 0.2s ease, box-shadow 0.2s ease; cursor: pointer; }
+  .card-hover:hover { transform: translateY(-4px); box-shadow: 0 12px 36px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06) !important; }
 
-  .pill-hover { transition: all 0.2s ease; }
-  .pill-hover:hover { background: #E06612 !important; color: #fff !important; border-color: #E06612 !important; transform: translateY(-2px); }
+  .pill-hover { transition: all 0.18s ease; }
+  .pill-hover:hover { background: #E06612 !important; color: #fff !important; border-color: #E06612 !important; }
 
   .scroll-row { display:flex; gap:14px; overflow-x:auto; padding-bottom:8px; scroll-snap-type:x mandatory; }
   .scroll-row > * { scroll-snap-align: start; flex-shrink:0; }
 
-  .btn-orange { background:#E06612; color:#fff; border:none; cursor:pointer; font-family:"DM Sans",sans-serif; font-weight:700; transition:all 0.2s; }
-  .btn-orange:hover { background:#F07828; transform:translateY(-1px); box-shadow:0 8px 24px rgba(224,102,18,0.4); }
+  .btn-orange { background:#E06612; color:#fff; border:none; cursor:pointer; font-family:"DM Sans",sans-serif; font-weight:600; transition:all 0.18s ease; letter-spacing:-0.01em; }
+  .btn-orange:hover { background:#F07828; }
+  .btn-orange:active { transform:scale(0.98); }
 
-  .skeleton { background: linear-gradient(90deg, #F0EDE6 25%, #E8E4DC 50%, #F0EDE6 75%); background-size: 400px 100%; animation: shimmer 1.4s infinite; border-radius:16px; }
+  .skeleton { background: linear-gradient(90deg, #E8E8ED 25%, #F2F2F7 50%, #E8E8ED 75%); background-size: 600px 100%; animation: shimmer 1.6s ease infinite; border-radius:10px; }
+  .recipe-img { animation: imgFade 0.4s ease; object-fit: cover; width: 100%; height: 100%; display:block; }
+  @keyframes imgFade { from{opacity:0} to{opacity:1} }
 `;
 
 /* ─── Logo ───────────────────────────────────────────────── */
-// On dark backgrounds: use real PNG (black bg blends in)
-// On light backgrounds: use SVG (transparent, no box)
-const Logo = ({ height = 48, light = false }) => {
-  if (light) {
-    // Dark background — PNG logo blends perfectly
-    return (
-      <img src="/logo-orange.png" alt="Mama K Recipes"
-        style={{ height: `${height}px`, width: "auto", objectFit: "contain" }} />
-    );
-  }
-  // Light background — transparent SVG to avoid the black box
-  const s = height;
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-      <svg width={s * 0.6} height={s} viewBox="0 0 60 100" fill="none">
-        <path d="M30 3C16 18 7 36 7 56c0 22 11 40 23 41 12-1 23-19 23-41 0-20-9-38-23-53z" fill={B.orange}/>
-        <rect x="20" y="38" width="6" height="34" rx="3" fill={B.black} opacity=".85"/>
-        <circle cx="23" cy="32" r="5" fill={B.black} opacity=".85"/>
-        <path d="M34 30v14l7-6v36a3 3 0 01-6 0V38l7 6V30z" fill={B.black} opacity=".85"/>
-      </svg>
-      <div>
-        <div style={{ fontFamily: "'Bebas Neue',Impact,sans-serif", fontSize: s * 0.52, color: B.black, letterSpacing: "0.06em", lineHeight: 1 }}>MAMA K</div>
-        <div style={{ fontFamily: "'DM Sans',sans-serif", fontSize: s * 0.22, color: B.orange, letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 700 }}>RECIPES</div>
-      </div>
+const FLAME_PATH = "M1124.64 460.74C1124.64 460.74 1018.08 559.09 969.82 679.96C918.56 808.31 950.33 857.42 926.18 884.04C898.73 914.3 844.54 889.67 862.76 758.23C808.7 858.61 767.84 966.45 767.84 1063.14C767.84 1190.23 834.29 1301.78 934.34 1364.99L945.62 1306.46C950.51 1281.09 941.48 1255.22 922.29 1237.93C904.98 1222.3 895.93 1202.79 903.6 1162.96C917.82 1089.21 979.92 994.98 1032.18 1005.05C1084.45 1015.13 1107.08 1125.69 1092.86 1199.44C1085.18 1239.27 1069.53 1254.03 1047.64 1262.09C1023.4 1271 1005.38 1291.66 1000.5 1317.04L986.04 1392.02C1028.65 1409.99 1075.48 1419.95 1124.64 1419.95C1172.96 1419.95 1219.01 1410.32 1261.04 1392.92L1248.78 1329.27C1243.92 1304.09 1226.26 1283.22 1202.15 1274.51C1180 1266.48 1164.16 1251.8 1156.42 1211.66L1126.48 1056.31C1124.26 1044.82 1131.76 1033.73 1143.25 1031.52C1148.98 1030.41 1154.63 1031.73 1159.11 1034.77C1163.61 1037.8 1166.93 1042.56 1168.04 1048.29L1198.5 1206.34L1227.82 1200.69L1197.92 1045.6C1195.4 1032.49 1203.97 1019.81 1217.09 1017.29C1223.65 1016.02 1230.1 1017.52 1235.22 1020.99C1240.36 1024.46 1244.16 1029.9 1245.42 1036.45L1275.31 1191.53L1304.62 1185.88L1274.15 1027.84C1271.94 1016.36 1279.45 1005.26 1290.94 1003.04C1296.67 1001.93 1302.32 1003.25 1306.81 1006.29C1311.3 1009.33 1314.63 1014.09 1315.73 1019.83L1345.68 1175.18C1353.42 1215.32 1344.15 1234.84 1326.57 1250.52C1307.45 1267.57 1298.79 1293.51 1303.65 1318.68L1312.83 1366.3C1414.05 1303.34 1481.45 1191.12 1481.45 1063.14C1481.45 809.09 1169.68 729.91 1124.64 460.74Z";
+
+const Logo = ({ height = 48, light = false }) => (
+  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+    <svg width={height * 0.74} height={height} viewBox="767 460 714 960" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d={FLAME_PATH} fill={light ? "#fff9e5" : B.orange} />
+    </svg>
+    <div>
+      <div style={{
+        fontFamily: "'Bebas Neue', Impact, sans-serif",
+        fontSize: height * 0.54, letterSpacing: "0.06em", lineHeight: 1,
+        color: light ? "#fff" : B.black,
+      }}>MAMA K</div>
+      <div style={{
+        fontFamily: "'DM Sans', sans-serif",
+        fontSize: height * 0.22, letterSpacing: "0.22em",
+        textTransform: "uppercase", fontWeight: 700,
+        color: light ? "#fff9e5" : B.orange,
+      }}>RECIPES</div>
     </div>
-  );
-};
+  </div>
+);
 
 /* ─── Skeleton Card ──────────────────────────────────────── */
 const SkeletonCard = () => (
@@ -203,63 +255,114 @@ const SkeletonCard = () => (
 );
 
 /* ─── Recipe Card ────────────────────────────────────────── */
-const RecipeCard = ({ r, onOpen, bookmarked, onBM, idx = 0, wide = false }) => (
-  <div className="card-hover" onClick={onOpen} style={{
-    width: wide ? "280px" : "220px", background: B.white, borderRadius: "18px",
-    overflow: "hidden", cursor: "pointer", position: "relative",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-    animation: "fadeUp 0.5s ease both",
-    animationDelay: `${(idx % 8) * 50}ms`,
-  }}>
-    <div style={{
-      height: wide ? "140px" : "115px", fontSize: wide ? "60px" : "48px",
-      background: `linear-gradient(135deg,${B.cream} 0%,#E8DEC8 100%)`,
-      display: "flex", alignItems: "center", justifyContent: "center",
-    }}>{r.emoji}</div>
+const RecipeCard = ({ r, onOpen, bookmarked, onBM, idx = 0, wide = false }) => {
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const w = wide ? "280px" : "220px";
 
-    <button onClick={e => { e.stopPropagation(); onBM(); }} style={{
-      position: "absolute", top: "8px", right: "8px",
-      background: "rgba(255,255,255,0.92)", backdropFilter: "blur(8px)",
-      border: "none", borderRadius: "50%", width: "30px", height: "30px",
-      cursor: "pointer", fontSize: "13px", color: bookmarked ? B.orange : "#AAA",
-      display: "flex", alignItems: "center", justifyContent: "center",
-      transition: "all 0.2s", boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
+  return (
+    <div className="card-hover" onClick={onOpen} style={{
+      width: w, background: B.card, borderRadius: "16px",
+      overflow: "hidden", position: "relative",
+      boxShadow: "0 2px 8px rgba(0,0,0,0.06), 0 0 0 0.5px rgba(0,0,0,0.06)",
+      animation: "fadeUp 0.45s ease both",
+      animationDelay: `${(idx % 8) * 45}ms`,
     }}>
-      {bookmarked ? "♥" : "♡"}
-    </button>
-
-    {r.region && (
+      {/* Image / Fallback */}
       <div style={{
-        position: "absolute", top: "8px", left: "8px",
-        background: "rgba(10,10,10,0.72)", backdropFilter: "blur(6px)",
-        color: "#fff", fontSize: "9px", fontWeight: 700,
-        padding: "3px 8px", borderRadius: "8px", letterSpacing: "0.08em",
-        textTransform: "uppercase", fontFamily: "'DM Sans', sans-serif",
-      }}>{r.region}</div>
-    )}
+        height: wide ? "148px" : "120px", position: "relative", overflow: "hidden",
+        background: `linear-gradient(135deg, ${B.cream} 0%, #E8DEC8 100%)`,
+      }}>
+        {r.image ? (
+          <>
+            {!imgLoaded && (
+              <div style={{
+                position: "absolute", inset: 0,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: "40px", color: B.muted,
+              }}>{r.emoji}</div>
+            )}
+            <img
+              className="recipe-img"
+              src={r.image}
+              alt={r.title}
+              onLoad={() => setImgLoaded(true)}
+              style={{
+                opacity: imgLoaded ? 1 : 0,
+                transition: "opacity 0.35s ease",
+                position: "absolute", inset: 0,
+              }}
+            />
+          </>
+        ) : (
+          <div style={{
+            height: "100%", display: "flex", alignItems: "center",
+            justifyContent: "center", fontSize: wide ? "56px" : "44px",
+          }}>{r.emoji}</div>
+        )}
 
-    <div style={{ padding: "12px 14px 14px" }}>
-      <div style={{
-        fontFamily: "'Cormorant Garamond', serif",
-        fontSize: "15px", fontWeight: 600, lineHeight: 1.3, marginBottom: "3px", color: B.black,
-      }}>{r.title}</div>
-      <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "11px", color: B.muted, lineHeight: 1.4, marginBottom: "10px" }}>
-        {r.tagline}
+        {/* Subtle gradient overlay for text legibility */}
+        {r.image && imgLoaded && (
+          <div style={{
+            position: "absolute", bottom: 0, left: 0, right: 0, height: "50%",
+            background: "linear-gradient(to top, rgba(0,0,0,0.35), transparent)",
+            pointerEvents: "none",
+          }} />
+        )}
       </div>
-      <div style={{ display: "flex", gap: "5px", alignItems: "center", flexWrap: "wrap" }}>
-        <span style={{
-          fontSize: "9px", fontWeight: 700, padding: "2px 8px", borderRadius: "10px",
-          background: r.difficulty === "Easy" ? "#E8F5E9" : r.difficulty === "Medium" ? "#FFF8E1" : "#FCE4EC",
-          color: r.difficulty === "Easy" ? "#2E7D32" : r.difficulty === "Medium" ? "#E65100" : "#880E4F",
-          textTransform: "uppercase", letterSpacing: "0.07em",
-        }}>{r.difficulty}</span>
-        <span style={{ marginLeft: "auto", fontFamily: "'DM Sans', sans-serif", fontSize: "10px", color: B.muted }}>
-          ⏱ {r.time}
-        </span>
+
+      {/* Bookmark */}
+      <button onClick={e => { e.stopPropagation(); onBM(); }} style={{
+        position: "absolute", top: "8px", right: "8px",
+        background: "rgba(255,255,255,0.88)", backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+        border: "none", borderRadius: "50%", width: "30px", height: "30px",
+        cursor: "pointer", fontSize: "13px", color: bookmarked ? B.orange : "#AAA",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        transition: "all 0.18s", boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
+      }}>
+        {bookmarked ? "♥" : "♡"}
+      </button>
+
+      {/* Region tag */}
+      {r.region && (
+        <div style={{
+          position: "absolute", top: "8px", left: "8px",
+          background: "rgba(0,0,0,0.65)", backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
+          color: "#fff", fontSize: "9px", fontWeight: 600,
+          padding: "3px 8px", borderRadius: "6px", letterSpacing: "0.06em",
+          textTransform: "uppercase", fontFamily: "'DM Sans', sans-serif",
+        }}>{r.region}</div>
+      )}
+
+      {/* Body */}
+      <div style={{ padding: "12px 14px 14px" }}>
+        <div style={{
+          fontFamily: "'Cormorant Garamond', serif",
+          fontSize: "15px", fontWeight: 600, lineHeight: 1.3,
+          marginBottom: "3px", color: B.dark,
+          letterSpacing: "-0.01em",
+        }}>{r.title}</div>
+        <div style={{
+          fontFamily: "'DM Sans', sans-serif", fontSize: "11px",
+          color: B.muted, lineHeight: 1.45, marginBottom: "10px",
+        }}>{r.tagline}</div>
+        <div style={{ display: "flex", gap: "5px", alignItems: "center" }}>
+          <span style={{
+            fontSize: "9px", fontWeight: 600, padding: "2px 8px", borderRadius: "6px",
+            background: r.difficulty === "Easy" ? "#F0FDF4" : r.difficulty === "Medium" ? "#FFFBEB" : "#FFF1F2",
+            color: r.difficulty === "Easy" ? "#15803D" : r.difficulty === "Medium" ? "#D97706" : "#BE123C",
+            textTransform: "uppercase", letterSpacing: "0.06em",
+          }}>{r.difficulty}</span>
+          <span style={{
+            marginLeft: "auto", fontFamily: "'DM Sans', sans-serif",
+            fontSize: "10px", color: B.muted,
+          }}>⏱ {r.time}</span>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 /* ─── Section Row ────────────────────────────────────────── */
 const GUTTER = "40px";
@@ -431,83 +534,153 @@ const SectionRow = ({ section, onSelect, bookmarks, onBM }) => {
 /* ─── Detail View ────────────────────────────────────────── */
 const DetailView = ({ recipe, bookmarked, onBM, onBack }) => {
   const [tab, setTab] = useState("ingredients");
+  const [imgLoaded, setImgLoaded] = useState(false);
 
   return (
-    <div style={{ maxWidth: "820px", margin: "0 auto", padding: "44px 28px 100px", animation: "fadeUp 0.4s ease" }}>
+    <div style={{ maxWidth: "820px", margin: "0 auto", padding: "40px 28px 100px", animation: "fadeUp 0.35s ease" }}>
+      {/* Back button — Apple style */}
       <button onClick={onBack} style={{
-        background: B.border, border: "none", borderRadius: "12px",
-        padding: "10px 20px", cursor: "pointer", marginBottom: "36px",
-        fontFamily: "'DM Sans', sans-serif", fontSize: "13px", color: B.black, fontWeight: 600,
-        display: "inline-flex", alignItems: "center", gap: "6px",
-        transition: "background 0.2s",
-      }}
-        onMouseEnter={e => e.currentTarget.style.background = "#DDD9D2"}
-        onMouseLeave={e => e.currentTarget.style.background = B.border}
-      >← Back</button>
+        background: "none", border: "none", cursor: "pointer", marginBottom: "28px",
+        fontFamily: "'DM Sans', sans-serif", fontSize: "14px",
+        color: B.orange, fontWeight: 500,
+        display: "inline-flex", alignItems: "center", gap: "4px",
+        padding: 0,
+      }}>‹ Back</button>
 
+      {/* Hero image */}
       <div style={{
-        height: "280px", borderRadius: "28px",
+        height: "320px", borderRadius: "20px", overflow: "hidden",
         background: `linear-gradient(135deg, ${B.cream}, #E0D4B8)`,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: "110px", marginBottom: "36px",
-        boxShadow: "0 8px 48px rgba(0,0,0,0.08)",
-      }}>{recipe.emoji}</div>
+        marginBottom: "32px", position: "relative",
+        boxShadow: "0 4px 24px rgba(0,0,0,0.08), 0 0 0 0.5px rgba(0,0,0,0.05)",
+      }}>
+        {recipe.image ? (
+          <>
+            <div style={{
+              position: "absolute", inset: 0,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: "96px", opacity: imgLoaded ? 0 : 1, transition: "opacity 0.3s",
+            }}>{recipe.emoji}</div>
+            <img
+              src={recipe.image}
+              alt={recipe.title}
+              onLoad={() => setImgLoaded(true)}
+              style={{
+                width: "100%", height: "100%", objectFit: "cover",
+                opacity: imgLoaded ? 1 : 0, transition: "opacity 0.4s ease",
+                display: "block",
+              }}
+            />
+            {/* Credit */}
+            {imgLoaded && recipe.photographer && (
+              <div style={{
+                position: "absolute", bottom: "10px", right: "12px",
+                fontFamily: "'DM Sans', sans-serif", fontSize: "10px",
+                color: "rgba(255,255,255,0.6)",
+              }}>Photo: {recipe.photographer} / Pexels</div>
+            )}
+          </>
+        ) : (
+          <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "96px" }}>
+            {recipe.emoji}
+          </div>
+        )}
+      </div>
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "16px", marginBottom: "10px" }}>
-        <h1 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "clamp(28px,5vw,46px)", fontWeight: 600, color: B.black, lineHeight: 1.1 }}>
+      {/* Title row */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "16px", marginBottom: "8px" }}>
+        <h1 style={{
+          fontFamily: "'Cormorant Garamond', serif",
+          fontSize: "clamp(28px,5vw,44px)", fontWeight: 600,
+          color: B.dark, lineHeight: 1.1, letterSpacing: "-0.02em",
+        }}>
           {recipe.title}
         </h1>
         <button onClick={onBM} style={{
-          background: bookmarked ? B.orange : B.border,
-          border: "none", borderRadius: "50%", width: "48px", height: "48px", flexShrink: 0,
-          cursor: "pointer", fontSize: "19px", color: bookmarked ? "#fff" : B.muted,
+          background: bookmarked ? B.orange : B.bg,
+          border: `1px solid ${bookmarked ? B.orange : B.border}`,
+          borderRadius: "50%", width: "44px", height: "44px", flexShrink: 0,
+          cursor: "pointer", fontSize: "17px", color: bookmarked ? "#fff" : B.muted,
           display: "flex", alignItems: "center", justifyContent: "center",
-          transition: "all 0.2s", boxShadow: bookmarked ? `0 6px 20px ${B.orange}44` : "none",
+          transition: "all 0.18s",
         }}>{bookmarked ? "♥" : "♡"}</button>
       </div>
 
-      <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "15px", color: B.muted, marginBottom: "32px", lineHeight: 1.7 }}>
-        {recipe.tagline}
-      </p>
+      <p style={{
+        fontFamily: "'DM Sans', sans-serif", fontSize: "15px",
+        color: B.muted, marginBottom: "28px", lineHeight: 1.65,
+      }}>{recipe.tagline}</p>
 
-      {/* Meta strip */}
+      {/* Meta strip — Apple segmented style */}
       <div style={{
-        display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "1px",
-        background: B.border, borderRadius: "20px", overflow: "hidden", marginBottom: "40px",
-        boxShadow: "0 2px 16px rgba(0,0,0,0.04)",
+        display: "grid", gridTemplateColumns: "repeat(4,1fr)",
+        background: B.bg, borderRadius: "14px", overflow: "hidden",
+        border: `1px solid ${B.border}`, marginBottom: "36px",
       }}>
-        {[["Time", recipe.time], ["Serves", recipe.servings], ["Calories", recipe.calories ? `~${recipe.calories}` : "—"], ["Level", recipe.difficulty]].map(([l, v]) => (
-          <div key={l} style={{ background: B.white, padding: "18px 8px", textAlign: "center" }}>
-            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "22px", fontWeight: 600, color: B.black, marginBottom: "3px" }}>{v}</div>
-            <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.1em", color: B.muted }}>{l}</div>
+        {[["⏱", "Time", recipe.time], ["👥", "Serves", recipe.servings], ["🔥", "Cal", recipe.calories ? `~${recipe.calories}` : "—"], ["📊", "Level", recipe.difficulty]].map(([icon, l, v], i) => (
+          <div key={l} style={{
+            padding: "16px 8px", textAlign: "center",
+            borderRight: i < 3 ? `1px solid ${B.border}` : "none",
+            background: B.white,
+          }}>
+            <div style={{ fontSize: "14px", marginBottom: "4px" }}>{icon}</div>
+            <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "13px", fontWeight: 600, color: B.dark, marginBottom: "1px" }}>{v}</div>
+            <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "10px", color: B.muted, textTransform: "uppercase", letterSpacing: "0.07em" }}>{l}</div>
           </div>
         ))}
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: "flex", gap: "4px", background: B.border, borderRadius: "14px", padding: "4px", marginBottom: "32px" }}>
+      {/* Apple-style segmented tabs */}
+      <div style={{
+        display: "flex", gap: "3px",
+        background: B.bg, border: `1px solid ${B.border}`,
+        borderRadius: "10px", padding: "3px", marginBottom: "28px",
+      }}>
         {["ingredients", "steps"].map(t => (
           <button key={t} onClick={() => setTab(t)} style={{
-            flex: 1, padding: "11px", border: "none", borderRadius: "11px",
+            flex: 1, padding: "9px", border: "none", borderRadius: "8px",
             background: tab === t ? B.white : "transparent",
-            fontFamily: "'DM Sans', sans-serif", fontSize: "13px", fontWeight: 700,
-            color: tab === t ? B.black : B.muted, cursor: "pointer", textTransform: "capitalize",
-            boxShadow: tab === t ? "0 1px 6px rgba(0,0,0,0.07)" : "none", transition: "all 0.2s",
-          }}>{t}</button>
+            fontFamily: "'DM Sans', sans-serif", fontSize: "13px", fontWeight: 600,
+            color: tab === t ? B.dark : B.muted, cursor: "pointer", textTransform: "capitalize",
+            boxShadow: tab === t ? "0 1px 3px rgba(0,0,0,0.08), 0 0 0 0.5px rgba(0,0,0,0.05)" : "none",
+            transition: "all 0.15s",
+          }}>{tab === t ? (t === "ingredients" ? "🥕 Ingredients" : "📋 Steps") : t === "ingredients" ? "🥕 Ingredients" : "📋 Steps"}</button>
         ))}
       </div>
 
       {tab === "ingredients" && (recipe.ingredients || []).map((ing, i) => (
         <div key={i} style={{
-          display: "flex", alignItems: "center", gap: "14px",
-          padding: "13px 0", borderBottom: `1px solid ${B.border}`,
-          fontFamily: "'DM Sans', sans-serif", fontSize: "14px", color: "#3A3530",
-          animation: "fadeUp 0.3s ease both", animationDelay: `${i * 25}ms`,
+          display: "flex", alignItems: "center", gap: "12px",
+          padding: "12px 0", borderBottom: `1px solid ${B.border}`,
+          fontFamily: "'DM Sans', sans-serif", fontSize: "14px", color: B.dark,
+          animation: "fadeUp 0.3s ease both", animationDelay: `${i * 20}ms`,
         }}>
-          <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: B.orange, flexShrink: 0 }} />
+          <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: B.orange, flexShrink: 0 }} />
           {ing}
         </div>
       ))}
+
+      {tab === "steps" && (recipe.steps || []).map((step, i) => (
+        <div key={i} style={{
+          display: "flex", gap: "16px", marginBottom: "24px",
+          animation: "fadeUp 0.3s ease both", animationDelay: `${i * 35}ms`,
+        }}>
+          <div style={{
+            width: "30px", height: "30px", borderRadius: "50%",
+            background: B.orange, color: "#fff", flexShrink: 0,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontFamily: "'DM Sans', sans-serif", fontSize: "12px", fontWeight: 700,
+            boxShadow: `0 3px 10px ${B.orange}33`,
+          }}>{i + 1}</div>
+          <div style={{
+            fontFamily: "'DM Sans', sans-serif", fontSize: "14px",
+            color: "#3A3530", lineHeight: 1.75, paddingTop: "5px",
+          }}>{step}</div>
+        </div>
+      ))}
+    </div>
+  );
+};
 
       {tab === "steps" && (recipe.steps || []).map((step, i) => (
         <div key={i} style={{ display: "flex", gap: "18px", marginBottom: "28px", animation: "fadeUp 0.3s ease both", animationDelay: `${i * 35}ms` }}>

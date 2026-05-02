@@ -428,7 +428,6 @@ const SectionRow = ({ section, onSelect, bookmarks, onBM }) => {
     pointerEvents: visible ? "auto" : "none",
     transition: "opacity 0.2s, background 0.2s",
     zIndex: 10,
-    border: "none",
   });
 
   return (
@@ -676,24 +675,6 @@ const DetailView = ({ recipe, bookmarked, onBM, onBack }) => {
             fontFamily: "'DM Sans', sans-serif", fontSize: "14px",
             color: "#3A3530", lineHeight: 1.75, paddingTop: "5px",
           }}>{step}</div>
-        </div>
-      ))}
-    </div>
-  );
-};
-
-      {tab === "steps" && (recipe.steps || []).map((step, i) => (
-        <div key={i} style={{ display: "flex", gap: "18px", marginBottom: "28px", animation: "fadeUp 0.3s ease both", animationDelay: `${i * 35}ms` }}>
-          <div style={{
-            width: "34px", height: "34px", borderRadius: "50%",
-            background: B.orange, color: "#fff", flexShrink: 0,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontFamily: "'DM Sans', sans-serif", fontSize: "13px", fontWeight: 700,
-            boxShadow: `0 4px 12px ${B.orange}44`,
-          }}>{i + 1}</div>
-          <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "14px", color: "#3A3530", lineHeight: 1.8, paddingTop: "6px" }}>
-            {step}
-          </div>
         </div>
       ))}
     </div>

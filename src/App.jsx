@@ -72,7 +72,7 @@ const FEATURED_SECTIONS = [
   {
     id: "top-european",
     title: "Top European Dishes",
-    subtitle: "From Paris to Rome — Europe's finest plates",
+    subtitle: "From Paris to Rome, Europe's finest plates",
     icon: "🇪🇺",
     dark: false,
     searches: [
@@ -121,7 +121,7 @@ const FEATURED_SECTIONS = [
   {
     id: "healthy",
     title: "Healthy & Low Calorie",
-    subtitle: "Under 450 calories — nourishing, not boring",
+    subtitle: "Under 450 calories, nourishing not boring",
     icon: "🥗",
     dark: true,
     searches: [
@@ -186,10 +186,10 @@ const callAPI = async (query) => {
 
 /* ─── Global Styles Injection ────────────────────────────── */
 const STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,600&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Bebas+Neue&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,600&family=Poppins:wght@400;900&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
-  body { -webkit-font-smoothing: antialiased; }
+  body { background: #F5F5F7; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
   ::-webkit-scrollbar { width: 0; height: 0; }
 
   @keyframes fadeUp   { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
@@ -223,7 +223,7 @@ const STYLES = `
 const FLAME_PATH = "M 1124.640625 460.738281 C 1124.640625 460.738281 1018.078125 559.09375 969.816406 679.957031 C 918.5625 808.308594 950.328125 857.421875 926.183594 884.042969 C 898.734375 914.304688 844.542969 889.671875 862.761719 758.234375 C 808.699219 858.609375 767.835938 966.453125 767.835938 1063.144531 C 767.835938 1190.230469 834.292969 1301.777344 934.335938 1364.988281 L 945.617188 1306.457031 C 950.511719 1281.09375 941.480469 1255.21875 922.292969 1237.933594 C 904.976562 1222.304688 895.925781 1202.789062 903.601562 1162.957031 C 917.820312 1089.207031 979.917969 994.976562 1032.183594 1005.050781 C 1084.445312 1015.128906 1107.078125 1125.691406 1092.863281 1199.4375 C 1085.183594 1239.273438 1069.527344 1254.027344 1047.640625 1262.09375 C 1023.402344 1271.003906 1005.382812 1291.664062 1000.496094 1317.042969 L 986.039062 1392.019531 C 1028.652344 1409.996094 1075.484375 1419.945312 1124.640625 1419.945312 C 1172.957031 1419.945312 1219.011719 1410.316406 1261.042969 1392.917969 L 1248.777344 1329.269531 C 1243.921875 1304.09375 1226.257812 1283.21875 1202.152344 1274.511719 C 1180.003906 1266.480469 1164.160156 1251.804688 1156.417969 1211.660156 L 1126.476562 1056.3125 C 1124.257812 1044.824219 1131.761719 1033.730469 1143.246094 1031.519531 C 1148.976562 1030.410156 1154.628906 1031.726562 1159.113281 1034.773438 C 1163.613281 1037.796875 1166.933594 1042.5625 1168.039062 1048.292969 L 1198.503906 1206.335938 L 1227.820312 1200.6875 L 1197.921875 1045.601562 C 1195.398438 1032.492188 1203.96875 1019.8125 1217.085938 1017.285156 C 1223.648438 1016.015625 1230.101562 1017.519531 1235.222656 1020.992188 C 1240.359375 1024.460938 1244.160156 1029.898438 1245.417969 1036.445312 L 1275.3125 1191.527344 L 1304.621094 1185.878906 L 1274.148438 1027.839844 C 1271.9375 1016.355469 1279.453125 1005.257812 1290.9375 1003.042969 C 1296.667969 1001.933594 1302.320312 1003.25 1306.808594 1006.292969 C 1311.304688 1009.332031 1314.628906 1014.089844 1315.730469 1019.828125 L 1345.683594 1175.183594 C 1353.421875 1215.320312 1344.152344 1234.835938 1326.570312 1250.519531 C 1307.449219 1267.570312 1298.792969 1293.511719 1303.648438 1318.683594 L 1312.828125 1366.304688 C 1414.050781 1303.335938 1481.445312 1191.121094 1481.445312 1063.144531 C 1481.445312 809.085938 1169.675781 729.90625 1124.640625 460.738281";
 
 const Logo = ({ height = 44, light = false }) => (
-  <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
+  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
     <svg
       width={height * 0.745}
       height={height}
@@ -233,21 +233,24 @@ const Logo = ({ height = 44, light = false }) => (
     >
       <path d={FLAME_PATH} fill={light ? "#fff9e5" : "#ce4f00"} fillRule="nonzero" />
     </svg>
-    <div>
+    <div style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
       <div style={{
-        fontFamily: "'Bebas Neue', Impact, sans-serif",
-        fontSize: height * 0.54,
+        fontFamily: "'Poppins', sans-serif",
+        fontWeight: 900,
+        fontSize: height * 0.42,
         color: light ? "#fff" : B.dark,
-        letterSpacing: "0.06em",
-        lineHeight: 1,
+        letterSpacing: "0.02em",
+        lineHeight: 1.1,
+        textTransform: "uppercase",
       }}>MAMA K</div>
       <div style={{
-        fontFamily: "'DM Sans', sans-serif",
-        fontSize: height * 0.21,
+        fontFamily: "'Poppins', sans-serif",
+        fontWeight: 400,
+        fontSize: height * 0.19,
         color: light ? "rgba(255,255,255,0.65)" : B.orange,
-        letterSpacing: "0.22em",
+        letterSpacing: "0.35em",
         textTransform: "uppercase",
-        fontWeight: 700,
+        lineHeight: 1,
         marginTop: "1px",
       }}>RECIPES</div>
     </div>
@@ -472,28 +475,21 @@ const SectionRow = ({ section, onSelect, bookmarks, onBM }) => {
         </div>
       </div>
 
-      {/* Scroll row — starts at GUTTER, arrows overlay edges */}
+      {/* Scroll row - no overlay arrows, just fade edges */}
       <div style={{ position: "relative" }}>
-        {/* Left fade + arrow */}
+        {/* Left fade */}
         {canLeft && (
-          <>
-            <div style={{
-              position: "absolute", left: 0, top: 0, bottom: 0, width: "80px", zIndex: 5, pointerEvents: "none",
-              background: `linear-gradient(to right, ${section.dark ? B.dark : B.bg}, transparent)`,
-            }} />
-            <button onClick={() => scroll(-1)} style={{ ...arrowStyle(canLeft, section.dark), left: "16px" }}>←</button>
-          </>
+          <div style={{
+            position: "absolute", left: 0, top: 0, bottom: 0, width: "60px", zIndex: 5, pointerEvents: "none",
+            background: `linear-gradient(to right, ${section.dark ? B.dark : B.bg}, transparent)`,
+          }} />
         )}
-
-        {/* Right fade + arrow */}
+        {/* Right fade */}
         {canRight && (
-          <>
-            <div style={{
-              position: "absolute", right: 0, top: 0, bottom: 0, width: "80px", zIndex: 5, pointerEvents: "none",
-              background: `linear-gradient(to left, ${section.dark ? B.dark : B.bg}, transparent)`,
-            }} />
-            <button onClick={() => scroll(1)} style={{ ...arrowStyle(canRight, section.dark), right: "16px" }}>→</button>
-          </>
+          <div style={{
+            position: "absolute", right: 0, top: 0, bottom: 0, width: "60px", zIndex: 5, pointerEvents: "none",
+            background: `linear-gradient(to left, ${section.dark ? B.dark : B.bg}, transparent)`,
+          }} />
         )}
 
         <div
@@ -760,7 +756,7 @@ const Paywall = ({ user, onSignIn, onDismiss }) => (
         {user ? "You've used your free searches. Go Pro for unlimited access." : "Create a free account to get 5 searches/day."}
       </p>
 
-      {["5 free searches daily (free)", "Unlimited with Pro — $4.99/mo", "Save collections to your account", "Top regional & legacy recipes"].map(p => (
+      {["5 free searches daily (free)", "Unlimited with Pro at $4.99/mo", "Save collections to your account", "Top regional & legacy recipes"].map(p => (
         <div key={p} style={{ display: "flex", gap: "10px", textAlign: "left", marginBottom: "10px", fontFamily: "'DM Sans', sans-serif", fontSize: "13px", color: "#3A3530" }}>
           <span style={{ color: B.orange, fontWeight: 700 }}>✓</span> {p}
         </div>
@@ -787,7 +783,7 @@ const Paywall = ({ user, onSignIn, onDismiss }) => (
           width: "100%", marginTop: "24px", padding: "15px", borderRadius: "14px",
           fontSize: "15px", boxShadow: `0 8px 28px ${B.orange}44`,
         }}>
-          Upgrade to Pro — $4.99 / month
+          Upgrade to Pro at $4.99 per month
         </button>
       )}
 
@@ -860,31 +856,43 @@ export default function App() {
       {/* ── NAV ── */}
       <nav style={{
         position: "sticky", top: 0, zIndex: 90,
-        background: "rgba(249,248,245,0.9)", backdropFilter: "blur(24px)",
+        background: "rgba(249,248,245,0.92)", backdropFilter: "blur(24px)",
+        WebkitBackdropFilter: "blur(24px)",
         borderBottom: `1px solid ${B.border}`,
-        padding: `0 ${GUTTER}`, height: "64px",
+        padding: "0 16px", height: "56px",
         display: "flex", alignItems: "center", justifyContent: "space-between",
+        gap: "8px",
       }}>
-        <div onClick={() => setView("home")} style={{ cursor: "pointer" }}><Logo height={44} /></div>
+        <div onClick={() => setView("home")} style={{ cursor: "pointer", flexShrink: 0 }}>
+          <Logo height={36} />
+        </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
+          {/* Saved — icon only on mobile */}
           <button onClick={() => setView("saved")} style={{
-            background: view === "saved" ? B.black : B.border,
-            color: view === "saved" ? "#fff" : B.black,
-            border: "none", borderRadius: "24px", padding: "8px 18px",
+            background: view === "saved" ? B.dark : B.bg,
+            color: view === "saved" ? "#fff" : B.dark,
+            border: `1px solid ${B.border}`,
+            borderRadius: "20px", padding: "6px 12px",
             cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
-            fontSize: "12px", fontWeight: 600, transition: "all 0.2s",
+            fontSize: "12px", fontWeight: 600, transition: "all 0.18s",
+            display: "flex", alignItems: "center", gap: "4px",
+            whiteSpace: "nowrap",
           }}>
-            ♥ Saved {bookmarks.length > 0 && `(${bookmarks.length})`}
+            <span style={{ color: view === "saved" ? "#fff" : B.orange }}>♥</span>
+            {bookmarks.length > 0 && <span>{bookmarks.length}</span>}
           </button>
 
+          {/* Search counter — compact */}
           <div style={{
-            background: remaining > 1 ? "#E8F5E9" : remaining === 1 ? "#FFF8E1" : "#FCE4EC",
-            color: remaining > 1 ? "#2E7D32" : remaining === 1 ? "#E65100" : "#880E4F",
-            padding: "8px 14px", borderRadius: "24px",
-            fontFamily: "'DM Sans', sans-serif", fontSize: "12px", fontWeight: 700,
+            background: remaining > 1 ? "#F0FDF4" : remaining === 1 ? "#FFFBEB" : "#FFF1F2",
+            color: remaining > 1 ? "#15803D" : remaining === 1 ? "#D97706" : "#BE123C",
+            border: `1px solid ${remaining > 1 ? "#BBF7D0" : remaining === 1 ? "#FDE68A" : "#FECDD3"}`,
+            padding: "6px 10px", borderRadius: "20px",
+            fontFamily: "'DM Sans', sans-serif", fontSize: "11px", fontWeight: 700,
+            whiteSpace: "nowrap",
           }}>
-            {remaining}/{FREE_LIMIT} searches
+            {remaining}/{FREE_LIMIT}
           </div>
 
           {user ? (
@@ -974,7 +982,7 @@ export default function App() {
                 </h1>
 
                 <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "16px", color: "rgba(255,255,255,0.55)", lineHeight: 1.75, marginBottom: "40px", maxWidth: "400px" }}>
-                  From Nigerian Party Jollof to Japanese Ramen — discover authentic, AI-generated recipes from every corner of the world.
+                  From Nigerian Party Jollof to Japanese Ramen, discover authentic, AI-generated recipes from every corner of the world.
                 </p>
 
                 <div style={{

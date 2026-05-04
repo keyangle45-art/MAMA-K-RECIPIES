@@ -4,16 +4,16 @@ import { onAuthStateChanged } from "firebase/auth";
 
 /* ─── Brand ──────────────────────────────────────────────── */
 const B = {
-  orange: "#E06612",
-  orangeHover: "#F07828",
+  orange: "#CE4F00",
+  orangeHover: "#E06612",
   black: "#0A0A0A",
   white: "#FFFFFF",
-  bg: "#F5F5F7",       // Apple's exact background gray
+  bg: "#F5F5F7",
   cream: "#F3ECD8",
-  border: "#D2D2D7",   // Apple's border color
-  muted: "#86868B",    // Apple's secondary text
-  dark: "#1D1D1F",     // Apple's near-black
-  card: "#FBFBFD",     // Apple card white
+  border: "#D2D2D7",
+  muted: "#86868B",
+  dark: "#1D1D1F",
+  card: "#FFFFFF",
 };
 
 /* ─── Data ───────────────────────────────────────────────── */
@@ -186,37 +186,33 @@ const callAPI = async (query) => {
 
 /* ─── Global Styles Injection ────────────────────────────── */
 const STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,600&family=Poppins:wght@400;900&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400;1,600&family=Poppins:wght@400;900&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
-  body { background: #F5F5F7; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+  body { background: #F5F5F7; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif; }
   ::-webkit-scrollbar { width: 0; height: 0; }
+  input::placeholder { color: #86868B; }
 
-  @keyframes fadeUp   { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
-  @keyframes fadeIn   { from { opacity:0; } to { opacity:1; } }
-  @keyframes scaleIn  { from { opacity:0; transform:scale(0.88); } to { opacity:1; transform:scale(1); } }
-  @keyframes slideUp  { from { transform:translateY(100%); } to { transform:translateY(0); } }
-  @keyframes pulse    { 0%,100%{opacity:1} 50%{opacity:0.25} }
-  @keyframes float    { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
-  @keyframes shimmer  { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
-  @keyframes spin     { to { transform:rotate(360deg); } }
+  @keyframes fadeUp  { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes fadeIn  { from { opacity:0; } to { opacity:1; } }
+  @keyframes scaleIn { from { opacity:0; transform:scale(0.94) translateY(6px); } to { opacity:1; transform:scale(1) translateY(0); } }
+  @keyframes pulse   { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  @keyframes float   { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+  @keyframes shimmer { 0%{background-position:-600px 0} 100%{background-position:600px 0} }
+  @keyframes imgFade { from{opacity:0} to{opacity:1} }
 
   .card-hover { transition: transform 0.2s ease, box-shadow 0.2s ease; cursor: pointer; }
-  .card-hover:hover { transform: translateY(-4px); box-shadow: 0 12px 36px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06) !important; }
+  .card-hover:hover { transform: translateY(-4px); box-shadow: 0 14px 40px rgba(0,0,0,0.11) !important; }
 
   .pill-hover { transition: all 0.18s ease; }
-  .pill-hover:hover { background: #E06612 !important; color: #fff !important; border-color: #E06612 !important; }
+  .pill-hover:hover { background: #CE4F00 !important; color: #fff !important; border-color: #CE4F00 !important; }
 
-  .scroll-row { display:flex; gap:14px; overflow-x:auto; padding-bottom:8px; scroll-snap-type:x mandatory; }
-  .scroll-row > * { scroll-snap-align: start; flex-shrink:0; }
-
-  .btn-orange { background:#E06612; color:#fff; border:none; cursor:pointer; font-family:"DM Sans",sans-serif; font-weight:600; transition:all 0.18s ease; letter-spacing:-0.01em; }
-  .btn-orange:hover { background:#F07828; }
+  .btn-orange { background:#CE4F00; color:#fff; border:none; cursor:pointer; font-family:'DM Sans',sans-serif; font-weight:500; transition:all 0.18s ease; }
+  .btn-orange:hover { background:#E06612; }
   .btn-orange:active { transform:scale(0.98); }
 
   .skeleton { background: linear-gradient(90deg, #E8E8ED 25%, #F2F2F7 50%, #E8E8ED 75%); background-size: 600px 100%; animation: shimmer 1.6s ease infinite; border-radius:10px; }
-  .recipe-img { animation: imgFade 0.4s ease; object-fit: cover; width: 100%; height: 100%; display:block; }
-  @keyframes imgFade { from{opacity:0} to{opacity:1} }
+  .recipe-img { object-fit:cover; width:100%; height:100%; display:block; }
 `;
 
 /* ─── Logo ───────────────────────────────────────────────── */
@@ -257,121 +253,127 @@ const Logo = ({ height = 44, light = false }) => (
   </div>
 );
 
+/* ─── Cuisine thumbnail gradients ────────────────────────── */
+const CUISINE_BG = {
+  nigeria: "linear-gradient(135deg,#3D2010,#5C3018)",
+  ghana: "linear-gradient(135deg,#2A1A08,#4A2A10)",
+  senegal: "linear-gradient(135deg,#1A2A3A,#1A3A2A)",
+  ethiopia: "linear-gradient(135deg,#1A2E1A,#2A4A1A)",
+  "south africa": "linear-gradient(135deg,#1A1A2E,#2E1A1A)",
+  kenya: "linear-gradient(135deg,#0A2E0A,#1A4A1A)",
+  usa: "linear-gradient(135deg,#0A1A2E,#1A2E3A)",
+  italy: "linear-gradient(135deg,#2E1A0A,#3A2A10)",
+  france: "linear-gradient(135deg,#0A0A2E,#1A1A3A)",
+  spain: "linear-gradient(135deg,#2E0A0A,#3A1A10)",
+  japan: "linear-gradient(135deg,#2E0A1A,#3A1A2A)",
+  china: "linear-gradient(135deg,#2E0A0A,#4A1A10)",
+  india: "linear-gradient(135deg,#2E1A0A,#4A2A10)",
+  thailand: "linear-gradient(135deg,#1A2E0A,#2A4A10)",
+  korea: "linear-gradient(135deg,#0A1A2E,#1A2A3A)",
+  vietnam: "linear-gradient(135deg,#1A2E1A,#2A3A10)",
+  morocco: "linear-gradient(135deg,#2E1A0A,#4A2A10)",
+  mexico: "linear-gradient(135deg,#2E1A0A,#4A1A10)",
+  default: "linear-gradient(135deg,#1A1A1A,#2A2A2A)",
+};
+const thumbBg = (region) => CUISINE_BG[(region || "").toLowerCase()] || CUISINE_BG.default;
+const lightThumb = (region) => ["usa","italy","france","spain","japan","china","india","thailand","korea","vietnam","morocco","mexico","new england","south","texas","new york","scotland","wales","england","germany","greece","portugal"].includes((region||"").toLowerCase());
+
 /* ─── Skeleton Card ──────────────────────────────────────── */
-const SkeletonCard = () => (
-  <div style={{ width: "220px", borderRadius: "18px", overflow: "hidden", background: B.white, boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
-    <div className="skeleton" style={{ height: "120px" }} />
-    <div style={{ padding: "14px" }}>
-      <div className="skeleton" style={{ height: "16px", marginBottom: "8px", width: "80%" }} />
-      <div className="skeleton" style={{ height: "12px", width: "55%" }} />
+const SkeletonCard = ({ dark = false }) => (
+  <div style={{ width: "166px", flexShrink: 0, borderRadius: "14px", overflow: "hidden", background: dark ? "rgba(255,255,255,0.06)" : B.white, boxShadow: dark ? "none" : "0 1px 4px rgba(0,0,0,0.05)" }}>
+    <div className="skeleton" style={{ height: "96px", borderRadius: 0 }} />
+    <div style={{ padding: "10px 12px 12px" }}>
+      <div className="skeleton" style={{ height: "13px", marginBottom: "6px", width: "75%" }} />
+      <div className="skeleton" style={{ height: "10px", width: "50%" }} />
     </div>
   </div>
 );
 
 /* ─── Recipe Card ────────────────────────────────────────── */
-const RecipeCard = ({ r, onOpen, bookmarked, onBM, idx = 0, wide = false }) => {
+const DIFF_STYLE = {
+  Easy:     { bg: "#F0FDF4", color: "#15803D" },
+  Medium:   { bg: "#FFFBEB", color: "#D97706" },
+  Advanced: { bg: "#FFF1F2", color: "#BE123C" },
+};
+
+const RecipeCard = ({ r, onOpen, bookmarked, onBM, idx = 0, dark = false, wide = false }) => {
   const [imgLoaded, setImgLoaded] = useState(false);
-  const w = wide ? "280px" : "220px";
+  const diff = DIFF_STYLE[r.difficulty] || DIFF_STYLE.Easy;
+  const w = wide ? "220px" : "166px";
+  const h = wide ? "120px" : "96px";
 
   return (
     <div className="card-hover" onClick={onOpen} style={{
-      width: w, background: B.card, borderRadius: "16px",
-      overflow: "hidden", position: "relative",
-      boxShadow: "0 2px 8px rgba(0,0,0,0.06), 0 0 0 0.5px rgba(0,0,0,0.06)",
-      animation: "fadeUp 0.45s ease both",
-      animationDelay: `${(idx % 8) * 45}ms`,
+      width: w, flexShrink: 0, borderRadius: "14px", overflow: "hidden",
+      position: "relative", scrollSnapAlign: "start",
+      background: dark ? "rgba(255,255,255,0.07)" : B.white,
+      border: `0.5px solid ${dark ? "rgba(255,255,255,0.1)" : B.border}`,
+      boxShadow: dark ? "none" : "0 1px 4px rgba(0,0,0,0.05)",
+      animation: "fadeUp 0.4s ease both",
+      animationDelay: `${(idx % 8) * 40}ms`,
     }}>
-      {/* Image / Fallback */}
-      <div style={{
-        height: wide ? "148px" : "120px", position: "relative", overflow: "hidden",
-        background: `linear-gradient(135deg, ${B.cream} 0%, #E8DEC8 100%)`,
-      }}>
+      {/* Thumbnail */}
+      <div style={{ height: h, position: "relative", overflow: "hidden", background: thumbBg(r.region) }}>
         {r.image ? (
           <>
-            {!imgLoaded && (
-              <div style={{
-                position: "absolute", inset: 0,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: "40px", color: B.muted,
-              }}>{r.emoji}</div>
-            )}
+            <div style={{
+              position: "absolute", inset: 0, display: "flex",
+              alignItems: "center", justifyContent: "center",
+              fontSize: wide ? "42px" : "34px",
+              opacity: imgLoaded ? 0 : 1, transition: "opacity 0.3s",
+            }}>{r.emoji}</div>
             <img
               className="recipe-img"
-              src={r.image}
-              alt={r.title}
+              src={r.image} alt={r.title}
               onLoad={() => setImgLoaded(true)}
-              style={{
-                opacity: imgLoaded ? 1 : 0,
-                transition: "opacity 0.35s ease",
-                position: "absolute", inset: 0,
-              }}
+              style={{ position: "absolute", inset: 0, opacity: imgLoaded ? 1 : 0, transition: "opacity 0.35s ease" }}
             />
           </>
         ) : (
-          <div style={{
-            height: "100%", display: "flex", alignItems: "center",
-            justifyContent: "center", fontSize: wide ? "56px" : "44px",
-          }}>{r.emoji}</div>
+          <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: wide ? "42px" : "34px" }}>
+            {r.emoji}
+          </div>
         )}
-
-        {/* Subtle gradient overlay for text legibility */}
-        {r.image && imgLoaded && (
+        {/* Gradient overlay */}
+        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "45%", background: "linear-gradient(to top,rgba(0,0,0,0.4),transparent)", pointerEvents: "none" }} />
+        {/* Region tag */}
+        {r.region && (
           <div style={{
-            position: "absolute", bottom: 0, left: 0, right: 0, height: "50%",
-            background: "linear-gradient(to top, rgba(0,0,0,0.35), transparent)",
-            pointerEvents: "none",
-          }} />
+            position: "absolute", top: "6px", left: "6px",
+            background: "rgba(0,0,0,0.58)", backdropFilter: "blur(6px)",
+            color: "#fff", fontSize: "8px", fontWeight: 500,
+            padding: "2px 7px", borderRadius: "5px", letterSpacing: "0.05em", textTransform: "uppercase",
+          }}>{r.region}</div>
         )}
+        {/* Bookmark */}
+        <button onClick={e => { e.stopPropagation(); onBM(); }} style={{
+          position: "absolute", top: "6px", right: "6px",
+          background: "rgba(255,255,255,0.88)", backdropFilter: "blur(8px)",
+          border: "none", borderRadius: "50%", width: "24px", height: "24px",
+          cursor: "pointer", fontSize: "11px", color: bookmarked ? B.orange : "#AAA",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          transition: "all 0.18s",
+        }}>{bookmarked ? "♥" : "♡"}</button>
       </div>
 
-      {/* Bookmark */}
-      <button onClick={e => { e.stopPropagation(); onBM(); }} style={{
-        position: "absolute", top: "8px", right: "8px",
-        background: "rgba(255,255,255,0.88)", backdropFilter: "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
-        border: "none", borderRadius: "50%", width: "30px", height: "30px",
-        cursor: "pointer", fontSize: "13px", color: bookmarked ? B.orange : "#AAA",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        transition: "all 0.18s", boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
-      }}>
-        {bookmarked ? "♥" : "♡"}
-      </button>
-
-      {/* Region tag */}
-      {r.region && (
-        <div style={{
-          position: "absolute", top: "8px", left: "8px",
-          background: "rgba(0,0,0,0.65)", backdropFilter: "blur(8px)",
-          WebkitBackdropFilter: "blur(8px)",
-          color: "#fff", fontSize: "9px", fontWeight: 600,
-          padding: "3px 8px", borderRadius: "6px", letterSpacing: "0.06em",
-          textTransform: "uppercase", fontFamily: "'DM Sans', sans-serif",
-        }}>{r.region}</div>
-      )}
-
       {/* Body */}
-      <div style={{ padding: "12px 14px 14px" }}>
+      <div style={{ padding: "9px 11px 11px" }}>
         <div style={{
-          fontFamily: "'Cormorant Garamond', serif",
-          fontSize: "15px", fontWeight: 600, lineHeight: 1.3,
-          marginBottom: "3px", color: B.dark,
+          fontFamily: "Georgia, 'Times New Roman', serif",
+          fontSize: "13px", fontWeight: 400, lineHeight: 1.3,
+          marginBottom: "3px", color: dark ? "#fff" : B.dark,
           letterSpacing: "-0.01em",
         }}>{r.title}</div>
-        <div style={{
-          fontFamily: "'DM Sans', sans-serif", fontSize: "11px",
-          color: B.muted, lineHeight: 1.45, marginBottom: "10px",
-        }}>{r.tagline}</div>
-        <div style={{ display: "flex", gap: "5px", alignItems: "center" }}>
-          <span style={{
-            fontSize: "9px", fontWeight: 600, padding: "2px 8px", borderRadius: "6px",
-            background: r.difficulty === "Easy" ? "#F0FDF4" : r.difficulty === "Medium" ? "#FFFBEB" : "#FFF1F2",
-            color: r.difficulty === "Easy" ? "#15803D" : r.difficulty === "Medium" ? "#D97706" : "#BE123C",
-            textTransform: "uppercase", letterSpacing: "0.06em",
-          }}>{r.difficulty}</span>
-          <span style={{
-            marginLeft: "auto", fontFamily: "'DM Sans', sans-serif",
-            fontSize: "10px", color: B.muted,
-          }}>⏱ {r.time}</span>
+        <div style={{ fontSize: "10px", color: dark ? "rgba(255,255,255,0.42)" : B.muted, lineHeight: 1.4, marginBottom: "8px" }}>
+          {r.tagline}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+          <span style={{ fontSize: "8px", fontWeight: 600, padding: "2px 7px", borderRadius: "5px", background: diff.bg, color: diff.color, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            {r.difficulty}
+          </span>
+          <span style={{ marginLeft: "auto", fontSize: "9px", color: dark ? "rgba(255,255,255,0.35)" : B.muted }}>
+            {r.time}
+          </span>
         </div>
       </div>
     </div>
@@ -445,30 +447,27 @@ const SectionRow = ({ section, onSelect, bookmarks, onBM }) => {
   });
 
   return (
-    <div ref={ref} style={{ padding: "52px 0", background: section.dark ? B.dark : B.bg }}>
-      {/* Section header — aligned to GUTTER */}
-      <div style={{ padding: `0 ${GUTTER}`, marginBottom: "24px", animation: revealed ? "fadeUp 0.5s ease" : "none" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+    <div ref={ref} style={{ padding: "36px 0 28px", background: section.dark ? B.dark : B.bg }}>
+      <div style={{ padding: `0 ${GUTTER}`, marginBottom: "18px", animation: revealed ? "fadeUp 0.5s ease" : "none" }}>
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "5px" }}>
-              <span style={{ fontSize: "20px" }}>{section.icon}</span>
-              <span style={{ fontFamily: "'DM Sans',sans-serif", fontSize: "11px", fontWeight: 700, color: B.orange, letterSpacing: "0.14em", textTransform: "uppercase" }}>
-                {section.subtitle}
-              </span>
+            <div style={{ fontSize: "10px", fontWeight: 600, color: B.orange, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: "5px" }}>
+              {section.subtitle}
             </div>
-            <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: "clamp(24px,3vw,36px)", fontWeight: 600, color: section.dark ? B.white : B.black, lineHeight: 1.1 }}>
+            <div style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: "clamp(20px,3vw,28px)", fontWeight: 400, color: section.dark ? "#fff" : B.dark, lineHeight: 1.1, letterSpacing: "-0.01em" }}>
               {section.title}
             </div>
           </div>
-          {/* Desktop arrow hints */}
-          <div style={{ display: "flex", gap: "8px" }}>
-            {[{ dir: -1, visible: canLeft }, { dir: 1, visible: canRight }].map(({ dir, visible }) => (
+          <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
+            {[{ dir: -1, active: canLeft }, { dir: 1, active: canRight }].map(({ dir, active }) => (
               <button key={dir} onClick={() => scroll(dir)} style={{
-                width: "36px", height: "36px", borderRadius: "50%", border: `1px solid ${section.dark ? "rgba(255,255,255,0.2)" : B.border}`,
-                background: section.dark ? "rgba(255,255,255,0.08)" : B.white,
-                color: section.dark ? "#fff" : B.black,
-                cursor: "pointer", fontSize: "14px", display: "flex", alignItems: "center", justifyContent: "center",
-                opacity: visible ? 1 : 0.3, transition: "all 0.2s",
+                width: "30px", height: "30px", borderRadius: "50%",
+                border: `0.5px solid ${section.dark ? "rgba(255,255,255,0.2)" : B.border}`,
+                background: section.dark ? "rgba(255,255,255,0.07)" : B.white,
+                color: section.dark ? "#fff" : B.dark,
+                cursor: "pointer", fontSize: "13px",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                opacity: active ? 1 : 0.28, transition: "all 0.18s",
               }}>{dir === -1 ? "←" : "→"}</button>
             ))}
           </div>
@@ -502,33 +501,32 @@ const SectionRow = ({ section, onSelect, bookmarks, onBM }) => {
           }}
         >
           {loading
-            ? Array(6).fill(0).map((_, i) => <SkeletonCard key={i} />)
+            ? Array(6).fill(0).map((_, i) => <SkeletonCard key={i} dark={section.dark} />)
             : cards.map((card, i) => (
               card._stub ? (
                 <div key={i} className="card-hover" onClick={() => onSelect(card._search, card._label)} style={{
-                  width: "220px", flexShrink: 0, background: section.dark ? "rgba(255,255,255,0.06)" : B.white,
-                  borderRadius: "18px", overflow: "hidden", cursor: "pointer",
-                  border: `1px solid ${section.dark ? "rgba(255,255,255,0.1)" : B.border}`,
+                  width: "166px", flexShrink: 0,
+                  background: section.dark ? "rgba(255,255,255,0.06)" : B.white,
+                  borderRadius: "14px", overflow: "hidden", cursor: "pointer",
+                  border: `0.5px solid ${section.dark ? "rgba(255,255,255,0.1)" : B.border}`,
                   scrollSnapAlign: "start",
                   animation: "fadeUp 0.5s ease both", animationDelay: `${i * 50}ms`,
                 }}>
-                  <div style={{ height: "115px", fontSize: "48px", background: section.dark ? "rgba(255,255,255,0.04)" : B.cream, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div style={{ height: "96px", background: thumbBg(card.region), display: "flex", alignItems: "center", justifyContent: "center", fontSize: "34px" }}>
                     {card.emoji}
                   </div>
-                  <div style={{ padding: "12px 14px" }}>
-                    <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: "15px", fontWeight: 600, color: section.dark ? "#fff" : B.black }}>{card.title}</div>
-                    <div style={{ fontFamily: "'DM Sans',sans-serif", fontSize: "10px", color: B.muted, marginTop: "4px" }}>{card.region}</div>
+                  <div style={{ padding: "9px 11px 11px" }}>
+                    <div style={{ fontFamily: "Georgia, serif", fontSize: "13px", color: section.dark ? "#fff" : B.dark, lineHeight: 1.3 }}>{card.title}</div>
+                    <div style={{ fontSize: "10px", color: B.muted, marginTop: "3px" }}>{card.region}</div>
                   </div>
                 </div>
               ) : (
-                <div key={i} style={{ flexShrink: 0, scrollSnapAlign: "start" }}>
-                  <RecipeCard
-                    idx={i} r={card}
-                    onOpen={() => onSelect(section.searches[i]?.q, card.title, card)}
-                    bookmarked={bookmarks.some(b => b.title === card.title)}
-                    onBM={() => onBM(card)}
-                  />
-                </div>
+                <RecipeCard
+                  key={i} idx={i} r={card} dark={section.dark}
+                  onOpen={() => onSelect(section.searches[i]?.q, card.title, card)}
+                  bookmarked={bookmarks.some(b => b.title === card.title)}
+                  onBM={() => onBM(card)}
+                />
               )
             ))}
         </div>
@@ -596,42 +594,38 @@ const DetailView = ({ recipe, bookmarked, onBM, onBack }) => {
       {/* Title row */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "16px", marginBottom: "8px" }}>
         <h1 style={{
-          fontFamily: "'Cormorant Garamond', serif",
-          fontSize: "clamp(28px,5vw,44px)", fontWeight: 600,
+          fontFamily: "Georgia, 'Times New Roman', serif",
+          fontSize: "clamp(26px,5vw,40px)", fontWeight: 400,
           color: B.dark, lineHeight: 1.1, letterSpacing: "-0.02em",
         }}>
           {recipe.title}
         </h1>
         <button onClick={onBM} style={{
           background: bookmarked ? B.orange : B.bg,
-          border: `1px solid ${bookmarked ? B.orange : B.border}`,
-          borderRadius: "50%", width: "44px", height: "44px", flexShrink: 0,
-          cursor: "pointer", fontSize: "17px", color: bookmarked ? "#fff" : B.muted,
+          border: `0.5px solid ${bookmarked ? B.orange : B.border}`,
+          borderRadius: "50%", width: "40px", height: "40px", flexShrink: 0,
+          cursor: "pointer", fontSize: "16px", color: bookmarked ? "#fff" : B.muted,
           display: "flex", alignItems: "center", justifyContent: "center",
           transition: "all 0.18s",
         }}>{bookmarked ? "♥" : "♡"}</button>
       </div>
 
       <p style={{
-        fontFamily: "'DM Sans', sans-serif", fontSize: "15px",
-        color: B.muted, marginBottom: "28px", lineHeight: 1.65,
+        fontFamily: "'DM Sans', sans-serif", fontSize: "14px",
+        color: B.muted, marginBottom: "24px", lineHeight: 1.65,
       }}>{recipe.tagline}</p>
 
-      {/* Meta strip — Apple segmented style */}
+      {/* Meta strip */}
       <div style={{
         display: "grid", gridTemplateColumns: "repeat(4,1fr)",
-        background: B.bg, borderRadius: "14px", overflow: "hidden",
-        border: `1px solid ${B.border}`, marginBottom: "36px",
+        gap: "1px", background: B.border, borderRadius: "12px",
+        overflow: "hidden", marginBottom: "32px",
+        border: `0.5px solid ${B.border}`,
       }}>
-        {[["⏱", "Time", recipe.time], ["👥", "Serves", recipe.servings], ["🔥", "Cal", recipe.calories ? `~${recipe.calories}` : "—"], ["📊", "Level", recipe.difficulty]].map(([icon, l, v], i) => (
-          <div key={l} style={{
-            padding: "16px 8px", textAlign: "center",
-            borderRight: i < 3 ? `1px solid ${B.border}` : "none",
-            background: B.white,
-          }}>
-            <div style={{ fontSize: "14px", marginBottom: "4px" }}>{icon}</div>
-            <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "13px", fontWeight: 600, color: B.dark, marginBottom: "1px" }}>{v}</div>
-            <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "10px", color: B.muted, textTransform: "uppercase", letterSpacing: "0.07em" }}>{l}</div>
+        {[["Time", recipe.time], ["Serves", recipe.servings], ["Cal", recipe.calories ? `~${recipe.calories}` : "N/A"], ["Level", recipe.difficulty]].map(([l, v], i) => (
+          <div key={l} style={{ background: B.white, padding: "14px 8px", textAlign: "center" }}>
+            <div style={{ fontFamily: "Georgia, serif", fontSize: "17px", fontWeight: 400, color: B.dark, marginBottom: "2px" }}>{v}</div>
+            <div style={{ fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.09em", color: B.muted }}>{l}</div>
           </div>
         ))}
       </div>
@@ -718,11 +712,11 @@ const ResultsView = ({ query, label, preloaded, onOpen, bookmarks, onBM, onSearc
       {loading ? (
         <div style={{ textAlign: "center", padding: "120px 0" }}>
           <div style={{ fontSize: "52px", display: "inline-block", animation: "float 1.5s ease infinite", marginBottom: "20px" }}>🔥</div>
-          <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "26px", color: B.muted }}>Finding your recipes...</div>
+          <div style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: "26px", color: B.muted }}>Finding your recipes...</div>
         </div>
       ) : (
         <>
-          <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "34px", fontWeight: 600, marginBottom: "4px" }}>{label || query}</div>
+          <div style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: "34px", fontWeight: 600, marginBottom: "4px" }}>{label || query}</div>
           <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "13px", color: B.muted, marginBottom: "28px" }}>{recipes.length} recipes generated</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: "16px" }}>
             {recipes.map((r, i) => (
@@ -749,7 +743,7 @@ const Paywall = ({ user, onSignIn, onDismiss }) => (
       animation: "scaleIn 0.3s cubic-bezier(0.34,1.4,0.64,1)",
     }}>
       <div style={{ marginBottom: "20px" }}><Logo height={40} /></div>
-      <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "30px", fontWeight: 600, lineHeight: 1.2, marginBottom: "12px" }}>
+      <div style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: "30px", fontWeight: 600, lineHeight: 1.2, marginBottom: "12px" }}>
         {user ? "Upgrade to Pro" : "Sign in to continue"}
       </div>
       <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "14px", color: B.muted, lineHeight: 1.7, marginBottom: "28px" }}>
@@ -975,13 +969,13 @@ export default function App() {
                   </span>
                 </div>
 
-                <h1 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "clamp(44px,5.5vw,74px)", fontWeight: 300, color: "#fff", lineHeight: 1.05, marginBottom: "22px" }}>
+                <h1 style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: "clamp(30px,5vw,60px)", fontWeight: 400, color: "#fff", lineHeight: 1.08, marginBottom: "18px", letterSpacing: "-0.02em" }}>
                   The world's<br />
-                  <em style={{ fontStyle: "italic", color: B.orange, fontWeight: 600 }}>finest recipes</em>,<br />
+                  <em style={{ fontStyle: "italic", color: B.orange }}>finest recipes</em>,<br />
                   in one place.
                 </h1>
 
-                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "16px", color: "rgba(255,255,255,0.55)", lineHeight: 1.75, marginBottom: "40px", maxWidth: "400px" }}>
+                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "14px", color: "rgba(255,255,255,0.5)", lineHeight: 1.7, marginBottom: "32px", maxWidth: "380px" }}>
                   From Nigerian Party Jollof to Japanese Ramen, discover authentic, AI-generated recipes from every corner of the world.
                 </p>
 
@@ -1107,13 +1101,13 @@ export default function App() {
       {/* ── SAVED ── */}
       {view === "saved" && (
         <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "48px 32px" }}>
-          <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "42px", fontWeight: 600, marginBottom: "8px" }}>Saved Recipes</div>
+          <div style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: "42px", fontWeight: 600, marginBottom: "8px" }}>Saved Recipes</div>
           <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "13px", color: B.muted, marginBottom: "36px" }}>{bookmarks.length} recipes saved</div>
 
           {bookmarks.length === 0 ? (
             <div style={{ textAlign: "center", padding: "100px 0" }}>
               <div style={{ fontSize: "60px", opacity: 0.2, marginBottom: "20px" }}>♡</div>
-              <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "28px", marginBottom: "20px", color: B.muted }}>Nothing saved yet</div>
+              <div style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: "28px", marginBottom: "20px", color: B.muted }}>Nothing saved yet</div>
               <button className="btn-orange" onClick={() => setView("home")} style={{ padding: "14px 32px", borderRadius: "14px", fontSize: "14px" }}>
                 Explore Recipes
               </button>

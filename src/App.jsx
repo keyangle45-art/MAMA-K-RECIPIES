@@ -218,40 +218,48 @@ const STYLES = `
 /* ─── Logo ───────────────────────────────────────────────── */
 const FLAME_PATH = "M 1124.640625 460.738281 C 1124.640625 460.738281 1018.078125 559.09375 969.816406 679.957031 C 918.5625 808.308594 950.328125 857.421875 926.183594 884.042969 C 898.734375 914.304688 844.542969 889.671875 862.761719 758.234375 C 808.699219 858.609375 767.835938 966.453125 767.835938 1063.144531 C 767.835938 1190.230469 834.292969 1301.777344 934.335938 1364.988281 L 945.617188 1306.457031 C 950.511719 1281.09375 941.480469 1255.21875 922.292969 1237.933594 C 904.976562 1222.304688 895.925781 1202.789062 903.601562 1162.957031 C 917.820312 1089.207031 979.917969 994.976562 1032.183594 1005.050781 C 1084.445312 1015.128906 1107.078125 1125.691406 1092.863281 1199.4375 C 1085.183594 1239.273438 1069.527344 1254.027344 1047.640625 1262.09375 C 1023.402344 1271.003906 1005.382812 1291.664062 1000.496094 1317.042969 L 986.039062 1392.019531 C 1028.652344 1409.996094 1075.484375 1419.945312 1124.640625 1419.945312 C 1172.957031 1419.945312 1219.011719 1410.316406 1261.042969 1392.917969 L 1248.777344 1329.269531 C 1243.921875 1304.09375 1226.257812 1283.21875 1202.152344 1274.511719 C 1180.003906 1266.480469 1164.160156 1251.804688 1156.417969 1211.660156 L 1126.476562 1056.3125 C 1124.257812 1044.824219 1131.761719 1033.730469 1143.246094 1031.519531 C 1148.976562 1030.410156 1154.628906 1031.726562 1159.113281 1034.773438 C 1163.613281 1037.796875 1166.933594 1042.5625 1168.039062 1048.292969 L 1198.503906 1206.335938 L 1227.820312 1200.6875 L 1197.921875 1045.601562 C 1195.398438 1032.492188 1203.96875 1019.8125 1217.085938 1017.285156 C 1223.648438 1016.015625 1230.101562 1017.519531 1235.222656 1020.992188 C 1240.359375 1024.460938 1244.160156 1029.898438 1245.417969 1036.445312 L 1275.3125 1191.527344 L 1304.621094 1185.878906 L 1274.148438 1027.839844 C 1271.9375 1016.355469 1279.453125 1005.257812 1290.9375 1003.042969 C 1296.667969 1001.933594 1302.320312 1003.25 1306.808594 1006.292969 C 1311.304688 1009.332031 1314.628906 1014.089844 1315.730469 1019.828125 L 1345.683594 1175.183594 C 1353.421875 1215.320312 1344.152344 1234.835938 1326.570312 1250.519531 C 1307.449219 1267.570312 1298.792969 1293.511719 1303.648438 1318.683594 L 1312.828125 1366.304688 C 1414.050781 1303.335938 1481.445312 1191.121094 1481.445312 1063.144531 C 1481.445312 809.085938 1169.675781 729.90625 1124.640625 460.738281";
 
-const Logo = ({ height = 44, light = false }) => (
-  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-    <svg
-      width={height * 0.745}
-      height={height}
-      viewBox="767 460 714 960"
-      xmlns="http://www.w3.org/2000/svg"
-      style={{ display: "block", flexShrink: 0, overflow: "visible" }}
-    >
-      <path d={FLAME_PATH} fill={light ? "#fff9e5" : "#ce4f00"} fillRule="nonzero" />
-    </svg>
-    <div style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
-      <div style={{
-        fontFamily: "'Poppins', sans-serif",
-        fontWeight: 900,
-        fontSize: height * 0.42,
-        color: light ? "#fff" : B.dark,
-        letterSpacing: "0.02em",
-        lineHeight: 1.1,
-        textTransform: "uppercase",
-      }}>MAMA K</div>
-      <div style={{
-        fontFamily: "'Poppins', sans-serif",
-        fontWeight: 400,
-        fontSize: height * 0.19,
-        color: light ? "rgba(255,255,255,0.65)" : B.orange,
-        letterSpacing: "0.35em",
-        textTransform: "uppercase",
-        lineHeight: 1,
-        marginTop: "1px",
-      }}>RECIPES</div>
+
+const Logo = ({ height = 44, light = false }) => {
+  const textColor = light ? "#fff" : B.dark;
+  const subColor = light ? "rgba(255,255,255,0.7)" : B.orange;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
+      <svg
+        width={height * 0.745}
+        height={height}
+        viewBox="767 460 714 960"
+        xmlns="http://www.w3.org/2000/svg"
+        style={{ display: "block", flexShrink: 0, overflow: "visible" }}
+      >
+        <path d={FLAME_PATH} fill={light ? "#fff9e5" : "#ce4f00"} fillRule="nonzero" />
+      </svg>
+      <div style={{ display: "flex", flexDirection: "column" }}>
+        <div style={{
+          fontFamily: "'Poppins', sans-serif",
+          fontWeight: 900,
+          fontSize: height * 0.42,
+          color: textColor,
+          letterSpacing: "0.02em",
+          lineHeight: 1.05,
+          textTransform: "uppercase",
+          whiteSpace: "nowrap",
+        }}>MAMA K</div>
+        {/* RECIPES stretches full width of MAMA K using word-spacing trick */}
+        <div style={{
+          fontFamily: "'Poppins', sans-serif",
+          fontWeight: 400,
+          fontSize: height * 0.175,
+          color: subColor,
+          textTransform: "uppercase",
+          lineHeight: 1,
+          marginTop: "2px",
+          letterSpacing: `${height * 0.042}px`,
+          whiteSpace: "nowrap",
+        }}>RECIPES</div>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 /* ─── Cuisine thumbnail gradients ────────────────────────── */
 const CUISINE_BG = {
@@ -381,7 +389,7 @@ const RecipeCard = ({ r, onOpen, bookmarked, onBM, idx = 0, dark = false, wide =
 };
 
 /* ─── Section Row ────────────────────────────────────────── */
-const GUTTER = "40px";
+const GUTTER = "20px";
 
 const SectionRow = ({ section, onSelect, bookmarks, onBM }) => {
   const [recipes, setRecipes] = useState({});
@@ -474,28 +482,13 @@ const SectionRow = ({ section, onSelect, bookmarks, onBM }) => {
         </div>
       </div>
 
-      {/* Scroll row - no overlay arrows, just fade edges */}
+      {/* Scroll row */}
       <div style={{ position: "relative" }}>
-        {/* Left fade */}
-        {canLeft && (
-          <div style={{
-            position: "absolute", left: 0, top: 0, bottom: 0, width: "60px", zIndex: 5, pointerEvents: "none",
-            background: `linear-gradient(to right, ${section.dark ? B.dark : B.bg}, transparent)`,
-          }} />
-        )}
-        {/* Right fade */}
-        {canRight && (
-          <div style={{
-            position: "absolute", right: 0, top: 0, bottom: 0, width: "60px", zIndex: 5, pointerEvents: "none",
-            background: `linear-gradient(to left, ${section.dark ? B.dark : B.bg}, transparent)`,
-          }} />
-        )}
-
         <div
           ref={scrollRef}
           onScroll={updateArrows}
           style={{
-            display: "flex", gap: "14px", overflowX: "auto", overflowY: "visible",
+            display: "flex", gap: "10px", overflowX: "auto", overflowY: "visible",
             paddingLeft: GUTTER, paddingRight: GUTTER, paddingBottom: "12px", paddingTop: "4px",
             scrollSnapType: "x mandatory", scrollbarWidth: "none",
           }}
@@ -939,8 +932,8 @@ export default function App() {
           {/* CINEMATIC HERO */}
           <div style={{
             background: B.dark, position: "relative", overflow: "hidden",
-            padding: `100px ${GUTTER} 80px`,
-            minHeight: "520px", display: "flex", alignItems: "center",
+            padding: "64px 24px 56px",
+            minHeight: "480px", display: "flex", alignItems: "center",
           }}>
             {/* Decorative orbs */}
             <div style={{
@@ -964,8 +957,8 @@ export default function App() {
                   borderRadius: "24px", padding: "6px 16px", marginBottom: "28px",
                 }}>
                   <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: B.orange, animation: "pulse 1.5s ease infinite" }} />
-                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "11px", fontWeight: 700, color: B.orange, letterSpacing: "0.12em", textTransform: "uppercase" }}>
-                    AI-Powered Recipe Discovery
+                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "11px", fontWeight: 600, color: B.orange, letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                    AI Powered Recipe Discovery
                   </span>
                 </div>
 
@@ -976,7 +969,7 @@ export default function App() {
                 </h1>
 
                 <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "14px", color: "rgba(255,255,255,0.5)", lineHeight: 1.7, marginBottom: "32px", maxWidth: "380px" }}>
-                  From Nigerian Party Jollof to Japanese Ramen, discover authentic, AI-generated recipes from every corner of the world.
+                  From French Bouillabaisse to Japanese Ramen, discover authentic, AI generated recipes from every corner of the world.
                 </p>
 
                 <div style={{
@@ -1032,16 +1025,33 @@ export default function App() {
           </div>
 
           {/* REGIONS BAR */}
-          <div style={{ background: B.white, borderBottom: `1px solid ${B.border}`, padding: `0 ${GUTTER}` }}>
-            <div className="scroll-row" style={{ padding: "16px 0", gap: "10px" }}>
+          {/* TOP CATEGORIES */}
+          <div style={{ background: B.white, borderBottom: `0.5px solid ${B.border}` }}>
+            <div style={{ padding: `12px 0 12px ${GUTTER}`, fontSize: "10px", fontWeight: 600, color: B.muted, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+              Top Categories
+            </div>
+            <div style={{
+              display: "flex", gap: "8px", overflowX: "auto", overflowY: "hidden",
+              paddingLeft: GUTTER, paddingRight: GUTTER, paddingBottom: "14px",
+              scrollSnapType: "x mandatory", scrollbarWidth: "none",
+            }}>
               {REGIONS.map((r, i) => (
-                <button key={r.label} className="pill-hover" onClick={() => doSearch(r.q, r.label)} style={{
-                  background: B.bg, border: `1.5px solid ${B.border}`,
-                  borderRadius: "24px", padding: "9px 18px", cursor: "pointer",
-                  fontFamily: "'DM Sans', sans-serif", fontSize: "12px", fontWeight: 600, color: B.black,
-                  display: "flex", alignItems: "center", gap: "6px", whiteSpace: "nowrap",
-                }}>
-                  <span>{r.emoji}</span> {r.label}
+                <button key={r.label} onClick={() => doSearch(r.q, r.label)} style={{
+                  background: B.bg,
+                  border: `0.5px solid ${B.border}`,
+                  borderRadius: "20px", padding: "7px 14px",
+                  cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
+                  fontSize: "12px", fontWeight: 500, color: B.dark,
+                  display: "flex", alignItems: "center", gap: "5px",
+                  whiteSpace: "nowrap", flexShrink: 0,
+                  scrollSnapAlign: "start",
+                  transition: "all 0.18s",
+                }}
+                  onMouseEnter={e => { e.currentTarget.style.background = B.dark; e.currentTarget.style.color = "#fff"; e.currentTarget.style.borderColor = B.dark; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = B.bg; e.currentTarget.style.color = B.dark; e.currentTarget.style.borderColor = B.border; }}
+                >
+                  <span style={{ fontSize: "14px" }}>{r.emoji}</span>
+                  <span>{r.label}</span>
                 </button>
               ))}
             </div>
@@ -1063,7 +1073,7 @@ export default function App() {
             <div style={{ maxWidth: "1200px", margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "20px" }}>
               <Logo height={40} light />
               <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.35)" }}>
-                © 2026 Mama K Recipes. AI-powered culinary discovery.
+                © 2026 Mama K Recipes. AI powered culinary discovery.
               </div>
               <div style={{ display: "flex", gap: "24px" }}>
                 {["Privacy", "Terms", "Contact"].map(l => (

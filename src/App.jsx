@@ -174,11 +174,11 @@ const incCount = (uid) => localStorage.setItem(`mk_sc_${uid || "guest"}`, getCou
 const getBM = () => JSON.parse(localStorage.getItem("mk_bm") || "[]");
 const saveBM = (b) => localStorage.setItem("mk_bm", JSON.stringify(b));
 
-const callAPI = async (query) => {
+const callAPI = async (query, isPro = false) => {
   const res = await fetch("/api/recipes", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query }),
+    body: JSON.stringify({ query, isPro }),
   });
   const data = await res.json();
   return data.recipes || [];
@@ -676,7 +676,7 @@ const DetailView = ({ recipe, bookmarked, onBM, onBack }) => {
 };
 
 /* ─── Search Results ─────────────────────────────────────── */
-const ResultsView = ({ query, label, preloaded, onOpen, bookmarks, onBM, onSearch }) => {
+const ResultsView = ({ query, label, preloaded, onOpen, bookmarks, onBM, onSearch, isPro, onUpgrade }) => {
   const [recipes, setRecipes] = useState(preloaded || []);
   const [loading, setLoading] = useState(!preloaded?.length);
   const [input, setInput] = useState(query);
@@ -684,39 +684,85 @@ const ResultsView = ({ query, label, preloaded, onOpen, bookmarks, onBM, onSearc
   useEffect(() => {
     if (preloaded?.length) return;
     setLoading(true);
-    callAPI(query).then(r => { setRecipes(r); setLoading(false); });
+    callAPI(query, isPro).then(r => { setRecipes(r); setLoading(false); });
   }, [query]);
 
   return (
-    <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "36px 32px" }}>
+    <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "28px 20px" }}>
       {/* Search bar */}
       <div style={{
-        background: B.white, borderRadius: "16px", border: `1.5px solid ${B.border}`,
-        display: "flex", alignItems: "center", marginBottom: "36px",
-        boxShadow: "0 2px 10px rgba(0,0,0,0.04)",
+        background: B.white, borderRadius: "14px", border: `0.5px solid ${B.border}`,
+        display: "flex", alignItems: "center", marginBottom: "28px",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
       }}>
-        <span style={{ padding: "0 12px 0 18px", fontSize: "16px", opacity: 0.4 }}>🔍</span>
-        <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && onSearch(input, input)}
-          style={{ flex: 1, border: "none", outline: "none", padding: "15px 0", fontFamily: "'DM Sans', sans-serif", fontSize: "14px", background: "transparent" }} />
+        <span style={{ padding: "0 12px 0 16px", fontSize: "15px", opacity: 0.35 }}>🔍</span>
+        <input value={input} onChange={e => setInput(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && onSearch(input, input)}
+          style={{ flex: 1, border: "none", outline: "none", padding: "14px 0", fontFamily: "'DM Sans', sans-serif", fontSize: "14px", background: "transparent" }}
+        />
         <button className="btn-orange" onClick={() => onSearch(input, input)}
-          style={{ margin: "5px", borderRadius: "11px", padding: "10px 22px", fontSize: "13px" }}>Search</button>
+          style={{ margin: "5px", borderRadius: "10px", padding: "9px 18px", fontSize: "12px", fontWeight: 600 }}>
+          Search
+        </button>
       </div>
 
       {loading ? (
-        <div style={{ textAlign: "center", padding: "120px 0" }}>
-          <div style={{ fontSize: "52px", display: "inline-block", animation: "float 1.5s ease infinite", marginBottom: "20px" }}>🔥</div>
-          <div style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: "26px", color: B.muted }}>Finding your recipes...</div>
+        <div style={{ textAlign: "center", padding: "100px 0" }}>
+          <div style={{ fontSize: "48px", display: "inline-block", animation: "float 1.5s ease infinite", marginBottom: "18px" }}>🔥</div>
+          <div style={{ fontFamily: "Georgia, serif", fontSize: "22px", color: B.muted }}>Finding your recipes...</div>
         </div>
       ) : (
         <>
-          <div style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: "34px", fontWeight: 600, marginBottom: "4px" }}>{label || query}</div>
-          <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "13px", color: B.muted, marginBottom: "28px" }}>{recipes.length} recipes generated</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: "16px" }}>
+          <div style={{ fontFamily: "Georgia, serif", fontSize: "28px", fontWeight: 400, marginBottom: "3px", letterSpacing: "-0.01em" }}>
+            {label || query}
+          </div>
+          <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "12px", color: B.muted, marginBottom: "20px" }}>
+            {recipes.length} recipes {isPro ? "generated" : "shown — upgrade for 12"}
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "14px", marginBottom: "20px" }}>
             {recipes.map((r, i) => (
-              <RecipeCard key={i} idx={i} r={r} wide onOpen={() => onOpen(r)}
-                bookmarked={bookmarks.some(b => b.title === r.title)} onBM={() => onBM(r)} />
+              <RecipeCard key={i} idx={i} r={r} wide
+                onOpen={() => onOpen(r)}
+                bookmarked={bookmarks.some(b => b.title === r.title)}
+                onBM={() => onBM(r)}
+              />
             ))}
           </div>
+
+          {/* Unlock banner — only for free users */}
+          {!isPro && (
+            <div onClick={onUpgrade} style={{
+              background: B.dark, borderRadius: "16px",
+              padding: "20px 24px", cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              gap: "16px", marginTop: "8px",
+              transition: "opacity 0.2s",
+            }}
+              onMouseEnter={e => e.currentTarget.style.opacity = "0.92"}
+              onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+            >
+              <div>
+                <div style={{
+                  fontFamily: "Georgia, serif", fontSize: "18px",
+                  color: "#fff", marginBottom: "4px",
+                }}>
+                  Unlock 12 recipes at once
+                </div>
+                <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.5)" }}>
+                  Upgrade to Pro for full results every search
+                </div>
+              </div>
+              <div style={{
+                background: B.orange, color: "#fff", borderRadius: "10px",
+                padding: "10px 18px", fontFamily: "'DM Sans', sans-serif",
+                fontSize: "13px", fontWeight: 600, flexShrink: 0,
+                whiteSpace: "nowrap",
+              }}>
+                Get Pro
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
@@ -796,7 +842,7 @@ export default function App() {
 
   const [user, setUser] = useState(null);
   const [authReady, setAuthReady] = useState(false);
-  const [view, setView] = useState("home"); // home | results | detail | saved
+  const [view, setView] = useState("home");
   const [searchQ, setSearchQ] = useState("");
   const [searchLabel, setSearchLabel] = useState("");
   const [preloadedRecipes, setPreloadedRecipes] = useState([]);
@@ -805,6 +851,7 @@ export default function App() {
   const [showPaywall, setShowPaywall] = useState(false);
   const [heroInput, setHeroInput] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isPro, setIsPro] = useState(false);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, u => { setUser(u); setAuthReady(true); });
@@ -1091,10 +1138,12 @@ export default function App() {
           query={searchQ}
           label={searchLabel}
           preloaded={preloadedRecipes}
-          onOpen={r => setSelected(r) || setView("detail")}
+          onOpen={r => { setSelected(r); setView("detail"); }}
           bookmarks={bookmarks}
           onBM={toggleBM}
           onSearch={doSearch}
+          isPro={isPro}
+          onUpgrade={() => setShowPaywall(true)}
         />
       )}
 

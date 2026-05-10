@@ -19,7 +19,7 @@ export default async function handler(req, res) {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-5-20251001",
+        model: "claude-haiku-4-5-20251001",
         max_tokens: isPro ? 4000 : 1500,
         messages: [{
           role: "user",
@@ -35,14 +35,16 @@ Return ONLY the JSON array. No markdown, no extra text.`
     });
 
     const claudeData = await claudeRes.json();
+    console.log("Claude status:", claudeRes.status);
+    console.log("Claude response:", JSON.stringify(claudeData).slice(0, 500));
 
-    // Log for debugging
     if (claudeData.error) {
-      console.error("Claude API error:", JSON.stringify(claudeData.error));
-      return res.status(500).json({ error: claudeData.error.message || "Claude API failed", detail: claudeData.error });
+      console.error("Claude API error:", claudeData.error);
+      return res.status(500).json({ error: claudeData.error.message, detail: claudeData.error });
     }
 
     const text = (claudeData.content || []).map(b => b.text || "").join("");
+    console.log("Raw text:", text.slice(0, 300));
 
     let recipes;
     try {

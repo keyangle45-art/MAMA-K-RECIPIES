@@ -19,8 +19,8 @@ export default async function handler(req, res) {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: isPro ? 1000 : 400,
+        model: "claude-sonnet-4-5-20251001",
+        max_tokens: isPro ? 4000 : 1500,
         messages: [{
           role: "user",
           content: `Expert culinary database. Return ONLY a valid JSON array of exactly ${count} recipes for: "${query}".
@@ -35,6 +35,13 @@ Return ONLY the JSON array. No markdown, no extra text.`
     });
 
     const claudeData = await claudeRes.json();
+
+    // Log for debugging
+    if (claudeData.error) {
+      console.error("Claude API error:", JSON.stringify(claudeData.error));
+      return res.status(500).json({ error: claudeData.error.message || "Claude API failed", detail: claudeData.error });
+    }
+
     const text = (claudeData.content || []).map(b => b.text || "").join("");
 
     let recipes;

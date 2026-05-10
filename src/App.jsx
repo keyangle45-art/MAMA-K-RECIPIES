@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { auth, signInWithGoogle, signOutUser } from "./firebase.js";
+import { auth, signInWithGoogle, signOutUser, getServerSearchCount, incrementServerSearchCount, syncBookmarksToFirestore, loadBookmarksFromFirestore, getUserProStatus } from "./firebase.js";
 import { onAuthStateChanged } from "firebase/auth";
 
 /* ─── Brand ──────────────────────────────────────────────── */
@@ -770,7 +770,7 @@ const ResultsView = ({ query, label, preloaded, onOpen, bookmarks, onBM, onSearc
 };
 
 /* ─── Paywall ────────────────────────────────────────────── */
-const Paywall = ({ user, onSignIn, onDismiss }) => (
+const Paywall = ({ user, onSignIn, onDismiss, onUpgrade, onLoading }) => (
   <div style={{
     position: "fixed", inset: 0, background: "rgba(10,10,10,0.75)",
     backdropFilter: "blur(18px)", zIndex: 999,
@@ -789,7 +789,7 @@ const Paywall = ({ user, onSignIn, onDismiss }) => (
         {user ? "You've used your free searches. Go Pro for unlimited access." : "Create a free account to get 5 searches/day."}
       </p>
 
-      {["5 free searches daily (free)", "Unlimited with Pro at $4.99/mo", "Save collections to your account", "Top regional & legacy recipes"].map(p => (
+      {[`3 free searches daily (free)`, "Unlimited searches with Pro at $4.99/mo", "Save collections to your account", "Top regional and legacy recipes"].map(p => (
         <div key={p} style={{ display: "flex", gap: "10px", textAlign: "left", marginBottom: "10px", fontFamily: "'DM Sans', sans-serif", fontSize: "13px", color: "#3A3530" }}>
           <span style={{ color: B.orange, fontWeight: 700 }}>✓</span> {p}
         </div>
@@ -812,11 +812,12 @@ const Paywall = ({ user, onSignIn, onDismiss }) => (
       )}
 
       {user && (
-        <button onClick={() => alert("Flutterwave coming soon!")} className="btn-orange" style={{
+        <button onClick={onUpgrade} className="btn-orange" style={{
           width: "100%", marginTop: "24px", padding: "15px", borderRadius: "14px",
-          fontSize: "15px", boxShadow: `0 8px 28px ${B.orange}44`,
+          fontSize: "15px", fontWeight: 700, boxShadow: `0 8px 28px ${B.orange}44`,
+          display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
         }}>
-          Upgrade to Pro at $4.99 per month
+          {onLoading ? "Redirecting..." : "Upgrade to Pro at $4.99 per month"}
         </button>
       )}
 
@@ -847,35 +848,105 @@ export default function App() {
   const [searchLabel, setSearchLabel] = useState("");
   const [preloadedRecipes, setPreloadedRecipes] = useState([]);
   const [selected, setSelected] = useState(null);
-  const [bookmarks, setBookmarks] = useState(getBM);
+  const [bookmarks, setBookmarks] = useState([]);
   const [showPaywall, setShowPaywall] = useState(false);
   const [heroInput, setHeroInput] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [isPro, setIsPro] = useState(false);
+  const [searchCount, setSearchCount] = useState(0);
+  const [loadingPayment, setLoadingPayment] = useState(false);
 
+  // Auth state + load user data from Firestore on sign in
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, u => { setUser(u); setAuthReady(true); });
+    const unsub = onAuthStateChanged(auth, async (u) => {
+      setUser(u);
+      setAuthReady(true);
+      if (u) {
+        // Load Pro status
+        const pro = await getUserProStatus(u.uid);
+        setIsPro(pro);
+        // Load search count
+        const count = await getServerSearchCount(u.uid);
+        setSearchCount(count);
+        // Load bookmarks from Firestore
+        const bm = await loadBookmarksFromFirestore(u.uid);
+        setBookmarks(bm);
+      } else {
+        // Guest — use localStorage
+        setSearchCount(parseInt(localStorage.getItem("mk_sc_guest") || "0"));
+        setBookmarks(getBM());
+        setIsPro(false);
+      }
+    });
     return unsub;
   }, []);
 
+  // Check payment success on URL (Flutterwave redirect)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("payment") === "success" && user?.uid) {
+      import("./firebase.js").then(({ setUserPro }) => {
+        setUserPro(user.uid).then(() => {
+          setIsPro(true);
+          window.history.replaceState({}, "", window.location.pathname);
+        });
+      });
+    }
+  }, [user]);
+
   const isBM = (r) => bookmarks.some(b => b.title === r.title);
   const toggleBM = (r) => {
-    const u = isBM(r) ? bookmarks.filter(b => b.title !== r.title) : [...bookmarks, r];
-    setBookmarks(u); saveBM(u);
+    const updated = isBM(r)
+      ? bookmarks.filter(b => b.title !== r.title)
+      : [...bookmarks, r];
+    setBookmarks(updated);
+    saveBM(updated); // always keep localStorage as fallback
+    if (user?.uid) syncBookmarksToFirestore(user.uid, updated);
   };
 
-  const doSearch = (q, label, preloaded) => {
-    const uid = user?.uid;
-    const count = getCount(uid);
-    if (count >= FREE_LIMIT) { setShowPaywall(true); return; }
-    incCount(uid);
-    setSearchQ(q);
-    setSearchLabel(label || q);
+  const doSearch = async (q, label, preloaded) => {
+    const query = (q || "").trim();
+    if (!query) return;
+
+    // Check limit — Pro users have unlimited searches
+    if (!isPro && searchCount >= FREE_LIMIT) {
+      setShowPaywall(true);
+      return;
+    }
+
+    // Increment count
+    const newCount = await incrementServerSearchCount(user?.uid);
+    setSearchCount(newCount);
+
+    setSearchQ(query);
+    setSearchLabel(label || query);
     setPreloadedRecipes(preloaded ? [preloaded] : []);
     setView("results");
   };
 
-  const remaining = Math.max(0, FREE_LIMIT - getCount(user?.uid));
+  const handleUpgrade = async () => {
+    if (!user) { setShowPaywall(true); return; }
+    setLoadingPayment(true);
+    try {
+      const res = await fetch("/api/payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uid: user.uid, email: user.email, name: user.displayName }),
+      });
+      const data = await res.json();
+      if (data.paymentLink) {
+        window.location.href = data.paymentLink;
+      } else {
+        alert("Payment setup failed. Please try again.");
+      }
+    } catch {
+      alert("Something went wrong. Please try again.");
+    } finally {
+      setLoadingPayment(false);
+    }
+  };
+
+  const remaining = isPro ? "Unlimited" : Math.max(0, FREE_LIMIT - searchCount);
 
   return (
     <div style={{ fontFamily: "'DM Sans', sans-serif", background: B.bg, minHeight: "100vh", color: B.black }}>
@@ -884,6 +955,8 @@ export default function App() {
           user={user}
           onSignIn={async () => { try { await signInWithGoogle(); setShowPaywall(false); } catch (e) { console.error(e); } }}
           onDismiss={() => setShowPaywall(false)}
+          onUpgrade={handleUpgrade}
+          onLoading={loadingPayment}
         />
       )}
 
@@ -917,16 +990,16 @@ export default function App() {
             {bookmarks.length > 0 && <span>{bookmarks.length}</span>}
           </button>
 
-          {/* Search counter — compact */}
+          {/* Search counter */}
           <div style={{
-            background: remaining > 1 ? "#F0FDF4" : remaining === 1 ? "#FFFBEB" : "#FFF1F2",
-            color: remaining > 1 ? "#15803D" : remaining === 1 ? "#D97706" : "#BE123C",
-            border: `1px solid ${remaining > 1 ? "#BBF7D0" : remaining === 1 ? "#FDE68A" : "#FECDD3"}`,
+            background: isPro ? "#F0FDF4" : remaining > 1 ? "#F0FDF4" : remaining === 1 ? "#FFFBEB" : "#FFF1F2",
+            color: isPro ? "#15803D" : remaining > 1 ? "#15803D" : remaining === 1 ? "#D97706" : "#BE123C",
+            border: `0.5px solid ${isPro ? "#BBF7D0" : remaining > 1 ? "#BBF7D0" : remaining === 1 ? "#FDE68A" : "#FECDD3"}`,
             padding: "6px 10px", borderRadius: "20px",
             fontFamily: "'DM Sans', sans-serif", fontSize: "11px", fontWeight: 700,
             whiteSpace: "nowrap",
           }}>
-            {remaining}/{FREE_LIMIT}
+            {isPro ? "Pro ✓" : `${remaining}/${FREE_LIMIT}`}
           </div>
 
           {user ? (
@@ -1143,7 +1216,7 @@ export default function App() {
           onBM={toggleBM}
           onSearch={doSearch}
           isPro={isPro}
-          onUpgrade={() => setShowPaywall(true)}
+          onUpgrade={handleUpgrade}
         />
       )}
 

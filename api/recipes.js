@@ -23,44 +23,31 @@ export default async function handler(req, res) {
         max_tokens: isPro ? 4000 : 1500,
         messages: [{
           role: "user",
-          content: `Expert culinary database. Return ONLY a valid JSON array of exactly ${count} recipes for: "${query}".
-
-ORDERING RULE: Recipe 1 MUST be the most authentic original version of this dish (e.g. for "Jollof Rice" recipe 1 is classic Nigerian Jollof — the origin). Remaining recipes are meaningfully different variations.
-
-Each object: { title, emoji, tagline (max 10 words), time, difficulty ("Easy"|"Medium"|"Advanced"), servings (number), calories (approx number), cuisine, tags (array of 2 strings), ingredients (array of 8-12 strings), steps (array of 5-7 strings) }.
-
-Return ONLY the JSON array. No markdown, no extra text.`
+          content: `You are an expert culinary database. Return ONLY a valid JSON array of exactly ${count} recipes for: "${query}". RULES: Recipe 1 MUST be the most authentic original version. No hyphens in any text. Each object: { "title": string, "emoji": single emoji, "tagline": max 10 words, "time": string, "difficulty": "Easy" or "Medium" or "Advanced", "servings": number, "calories": number, "cuisine": string, "region": short country name, "tags": array of 2 strings, "ingredients": array of 8-12 strings, "steps": array of 5-7 strings }. Return ONLY raw JSON array, no markdown, no extra text.`
         }]
       }),
     });
 
     const claudeData = await claudeRes.json();
-    console.log("Claude status:", claudeRes.status);
-    console.log("Claude response:", JSON.stringify(claudeData).slice(0, 500));
+    if (claudeData.error) return res.status(500).json({ error: claudeData.error.message });
 
-    if (claudeData.error) {
-      console.error("Claude API error:", claudeData.error);
-      return res.status(500).json({ error: claudeData.error.message, detail: claudeData.error });
-    }
-
-    const text = (claudeData.content || []).map(b => b.text || "").join("");
-    console.log("Raw text:", text.slice(0, 300));
-
+    const text = (claudeData.content || []).map(b => b.text || "").join("").trim();
     let recipes;
     try {
-      recipes = JSON.parse(text.replace(/```json|```/g, "").trim());
+      recipes = JSON.parse(text.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim());
     } catch {
-      return res.status(500).json({ error: "Parse error" });
+      return res.status(500).json({ error: "Parse failed", raw: text.slice(0, 300) });
     }
 
-    // Fetch Pexels images in parallel
+    if (!Array.isArray(recipes)) return res.status(500).json({ error: "Not an array" });
+
     const pexelsKey = process.env.PEXELS_API_KEY;
     const withImages = await Promise.all(
       recipes.map(async (recipe) => {
         try {
-          const q = encodeURIComponent(`${recipe.title} food`);
+          const q = encodeURIComponent(`${recipe.title} food dish plated meal`);
           const pRes = await fetch(
-            `https://api.pexels.com/v1/search?query=${q}&per_page=1&orientation=landscape`,
+            `https://api.pexels.com/v1/search?query=${q}&per_page=3&orientation=landscape&size=medium`,
             { headers: { Authorization: pexelsKey } }
           );
           const pData = await pRes.json();

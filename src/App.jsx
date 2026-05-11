@@ -882,15 +882,25 @@ export default function App() {
   }, []);
 
   // Check payment success on URL (Flutterwave redirect)
+  // Only grant Pro if transaction was actually verified
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("payment") === "success" && user?.uid) {
+    const payment = params.get("payment");
+    const txRef = params.get("tx_ref");
+    const status = params.get("status");
+
+    // Flutterwave returns status=successful on real payments
+    // If user cancelled, status will be "cancelled" or missing
+    if (payment === "success" && status === "successful" && txRef && user?.uid) {
       import("./firebase.js").then(({ setUserPro }) => {
         setUserPro(user.uid).then(() => {
           setIsPro(true);
           window.history.replaceState({}, "", window.location.pathname);
         });
       });
+    } else if (payment === "success" && status !== "successful") {
+      // User cancelled or payment failed — clear URL params, keep free status
+      window.history.replaceState({}, "", window.location.pathname);
     }
   }, [user]);
 
@@ -1007,29 +1017,72 @@ export default function App() {
               <img
                 src={user.photoURL} alt={user.displayName}
                 onClick={() => setMenuOpen(!menuOpen)}
-                style={{ width: "36px", height: "36px", borderRadius: "50%", cursor: "pointer", border: `2px solid ${B.orange}`, objectFit: "cover" }}
+                style={{ width: "34px", height: "34px", borderRadius: "50%", cursor: "pointer", border: `2px solid ${isPro ? B.orange : B.border}`, objectFit: "cover" }}
               />
               {menuOpen && (
                 <div style={{
-                  position: "absolute", top: "44px", right: 0,
-                  background: B.white, borderRadius: "14px", padding: "8px",
-                  boxShadow: "0 8px 32px rgba(0,0,0,0.12)", border: `1px solid ${B.border}`,
-                  minWidth: "180px", animation: "fadeIn 0.2s ease", zIndex: 100,
+                  position: "absolute", top: "42px", right: 0,
+                  background: B.white, borderRadius: "16px", padding: "6px",
+                  boxShadow: "0 12px 40px rgba(0,0,0,0.14)", border: `0.5px solid ${B.border}`,
+                  minWidth: "210px", animation: "fadeIn 0.18s ease", zIndex: 100,
                 }}>
-                  <div style={{ padding: "10px 12px 8px", fontFamily: "'DM Sans', sans-serif" }}>
-                    <div style={{ fontSize: "13px", fontWeight: 700, color: B.black }}>{user.displayName}</div>
-                    <div style={{ fontSize: "11px", color: B.muted }}>{user.email}</div>
+                  {/* Account info */}
+                  <div style={{ padding: "12px 14px 10px" }}>
+                    <div style={{ fontSize: "13px", fontWeight: 600, color: B.dark, marginBottom: "2px" }}>{user.displayName}</div>
+                    <div style={{ fontSize: "11px", color: B.muted, marginBottom: "6px" }}>{user.email}</div>
+                    <div style={{
+                      display: "inline-flex", alignItems: "center", gap: "5px",
+                      background: isPro ? "#F0FDF4" : B.bg,
+                      border: `0.5px solid ${isPro ? "#BBF7D0" : B.border}`,
+                      borderRadius: "20px", padding: "3px 10px",
+                      fontSize: "10px", fontWeight: 700,
+                      color: isPro ? "#15803D" : B.muted,
+                    }}>
+                      {isPro ? "✓ Pro Member" : "Free Plan"}
+                    </div>
                   </div>
-                  <div style={{ height: "1px", background: B.border, margin: "4px 0" }} />
-                  <button onClick={() => { signOutUser(); setMenuOpen(false); }} style={{
-                    width: "100%", background: "none", border: "none", padding: "9px 12px",
-                    fontFamily: "'DM Sans', sans-serif", fontSize: "13px", color: "#C62828",
-                    cursor: "pointer", textAlign: "left", borderRadius: "8px",
+
+                  <div style={{ height: "0.5px", background: B.border, margin: "2px 0" }} />
+
+                  {/* Menu items */}
+                  {[
+                    { icon: "👤", label: "Account", action: () => { alert(`Account\n\nName: ${user.displayName}\nEmail: ${user.email}\nPlan: ${isPro ? "Pro" : "Free"}`); setMenuOpen(false); } },
+                    { icon: "🔖", label: "Saved Recipes", action: () => { setView("saved"); setMenuOpen(false); } },
+                    { icon: "⭐", label: isPro ? "Manage Subscription" : "Upgrade to Pro", action: () => { setShowPaywall(true); setMenuOpen(false); }, highlight: !isPro },
+                    { icon: "⚙️", label: "Settings", action: () => { alert("Settings coming soon"); setMenuOpen(false); } },
+                    { icon: "❓", label: "Help & Support", action: () => { window.open("mailto:support@keyangle.tech"); setMenuOpen(false); } },
+                  ].map(item => (
+                    <button key={item.label} onClick={item.action} style={{
+                      width: "100%", background: "none", border: "none",
+                      padding: "9px 14px", fontFamily: "'DM Sans', sans-serif",
+                      fontSize: "13px", color: item.highlight ? B.orange : B.dark,
+                      fontWeight: item.highlight ? 600 : 400,
+                      cursor: "pointer", textAlign: "left", borderRadius: "10px",
+                      display: "flex", alignItems: "center", gap: "10px",
+                      transition: "background 0.15s",
+                    }}
+                      onMouseEnter={e => e.currentTarget.style.background = B.bg}
+                      onMouseLeave={e => e.currentTarget.style.background = "none"}
+                    >
+                      <span style={{ fontSize: "14px" }}>{item.icon}</span>
+                      {item.label}
+                    </button>
+                  ))}
+
+                  <div style={{ height: "0.5px", background: B.border, margin: "2px 0" }} />
+
+                  <button onClick={() => { signOutUser(); setMenuOpen(false); setIsPro(false); setSearchCount(0); setBookmarks([]); }} style={{
+                    width: "100%", background: "none", border: "none", padding: "9px 14px",
+                    fontFamily: "'DM Sans', sans-serif", fontSize: "13px", color: "#BE123C",
+                    cursor: "pointer", textAlign: "left", borderRadius: "10px",
+                    display: "flex", alignItems: "center", gap: "10px",
                     transition: "background 0.15s",
                   }}
-                    onMouseEnter={e => e.currentTarget.style.background = "#FFF0F0"}
+                    onMouseEnter={e => e.currentTarget.style.background = "#FFF1F2"}
                     onMouseLeave={e => e.currentTarget.style.background = "none"}
-                  >Sign out</button>
+                  >
+                    <span style={{ fontSize: "14px" }}>🚪</span> Sign out
+                  </button>
                 </div>
               )}
             </div>

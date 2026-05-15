@@ -168,20 +168,25 @@ const REGIONS = [
 ];
 
 /* ─── Helpers ────────────────────────────────────────────── */
-const FREE_LIMIT = 3;
-const getCount = (uid) => parseInt(localStorage.getItem(`mk_sc_${uid || "guest"}`) || "0");
-const incCount = (uid) => localStorage.setItem(`mk_sc_${uid || "guest"}`, getCount(uid) + 1);
+const FREE_LIMIT = 1;
 const getBM = () => JSON.parse(localStorage.getItem("mk_bm") || "[]");
 const saveBM = (b) => localStorage.setItem("mk_bm", JSON.stringify(b));
 
+// In-memory cache: query → recipes (lives for session)
+const recipeCache = new Map();
+
 const callAPI = async (query, isPro = false) => {
+  const cacheKey = `${query}__${isPro}`;
+  if (recipeCache.has(cacheKey)) return recipeCache.get(cacheKey);
   const res = await fetch("/api/recipes", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ query, isPro }),
   });
   const data = await res.json();
-  return data.recipes || [];
+  const recipes = data.recipes || [];
+  if (recipes.length > 0) recipeCache.set(cacheKey, recipes);
+  return recipes;
 };
 
 /* ─── Global Styles Injection ────────────────────────────── */
@@ -324,17 +329,29 @@ const RecipeCard = ({ r, onOpen, bookmarked, onBM, idx = 0, dark = false, wide =
       <div style={{ height: h, position: "relative", overflow: "hidden", background: thumbBg(r.region) }}>
         {r.image ? (
           <>
+            {/* Blur placeholder while loading */}
             <div style={{
-              position: "absolute", inset: 0, display: "flex",
-              alignItems: "center", justifyContent: "center",
-              fontSize: wide ? "42px" : "34px",
-              opacity: imgLoaded ? 0 : 1, transition: "opacity 0.3s",
-            }}>{r.emoji}</div>
+              position: "absolute", inset: 0,
+              backgroundImage: `url(${r.imageSmall || r.image})`,
+              backgroundSize: "cover", backgroundPosition: "center",
+              filter: imgLoaded ? "none" : "blur(12px)",
+              transform: "scale(1.05)",
+              transition: "filter 0.4s ease",
+            }} />
             <img
               className="recipe-img"
-              src={r.image} alt={r.title}
+              src={r.image}
+              srcSet={r.imageLarge ? `${r.image} 640w, ${r.imageLarge} 1200w` : undefined}
+              sizes="(max-width: 640px) 220px, 280px"
+              alt={r.title}
+              loading="lazy"
+              decoding="async"
               onLoad={() => setImgLoaded(true)}
-              style={{ position: "absolute", inset: 0, opacity: imgLoaded ? 1 : 0, transition: "opacity 0.35s ease" }}
+              style={{
+                position: "absolute", inset: 0,
+                opacity: imgLoaded ? 1 : 0,
+                transition: "opacity 0.35s ease",
+              }}
             />
           </>
         ) : (
@@ -553,27 +570,34 @@ const DetailView = ({ recipe, bookmarked, onBM, onBack }) => {
       }}>
         {recipe.image ? (
           <>
+            {/* Blur placeholder */}
             <div style={{
               position: "absolute", inset: 0,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: "96px", opacity: imgLoaded ? 0 : 1, transition: "opacity 0.3s",
-            }}>{recipe.emoji}</div>
+              backgroundImage: `url(${recipe.imageSmall || recipe.image})`,
+              backgroundSize: "cover", backgroundPosition: "center",
+              filter: imgLoaded ? "none" : "blur(16px)",
+              transform: "scale(1.05)",
+              transition: "filter 0.5s ease",
+            }} />
             <img
-              src={recipe.image}
+              src={recipe.imageLarge || recipe.image}
               alt={recipe.title}
+              loading="eager"
+              decoding="async"
+              fetchpriority="high"
               onLoad={() => setImgLoaded(true)}
               style={{
+                position: "absolute", inset: 0,
                 width: "100%", height: "100%", objectFit: "cover",
                 opacity: imgLoaded ? 1 : 0, transition: "opacity 0.4s ease",
                 display: "block",
               }}
             />
-            {/* Credit */}
             {imgLoaded && recipe.photographer && (
               <div style={{
                 position: "absolute", bottom: "10px", right: "12px",
                 fontFamily: "'DM Sans', sans-serif", fontSize: "10px",
-                color: "rgba(255,255,255,0.6)",
+                color: "rgba(255,255,255,0.65)",
               }}>Photo: {recipe.photographer} / Pexels</div>
             )}
           </>
@@ -782,14 +806,14 @@ const Paywall = ({ user, onSignIn, onDismiss, onUpgrade, onLoading }) => (
       animation: "scaleIn 0.3s cubic-bezier(0.34,1.4,0.64,1)",
     }}>
       <div style={{ marginBottom: "20px" }}><Logo height={40} /></div>
-      <div style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: "30px", fontWeight: 600, lineHeight: 1.2, marginBottom: "12px" }}>
-        {user ? "Upgrade to Pro" : "Sign in to continue"}
+      <div style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: "28px", fontWeight: 400, lineHeight: 1.2, marginBottom: "10px" }}>
+        {user ? "Upgrade to Pro" : "Sign in to start cooking"}
       </div>
-      <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "14px", color: B.muted, lineHeight: 1.7, marginBottom: "28px" }}>
-        {user ? "You've used your free searches. Go Pro for unlimited access." : "Create a free account to get 5 searches/day."}
+      <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "14px", color: B.muted, lineHeight: 1.7, marginBottom: "24px" }}>
+        {user ? "You have used your free generation for today. Upgrade to Pro for unlimited recipes." : "Create a free account to get 1 recipe generation daily. Upgrade anytime for unlimited access."}
       </p>
 
-      {[`3 free searches daily (free)`, "Unlimited searches with Pro at $4.99/mo", "Save collections to your account", "Top regional and legacy recipes"].map(p => (
+      {["1 free generation daily", "6 recipes per search with Pro", "Save collections to your account", "Top regional and legacy recipes"].map(p => (
         <div key={p} style={{ display: "flex", gap: "10px", textAlign: "left", marginBottom: "10px", fontFamily: "'DM Sans', sans-serif", fontSize: "13px", color: "#3A3530" }}>
           <span style={{ color: B.orange, fontWeight: 700 }}>✓</span> {p}
         </div>
@@ -918,14 +942,20 @@ export default function App() {
     const query = (q || "").trim();
     if (!query) return;
 
+    // Force sign in — no anonymous searches allowed
+    if (!user) {
+      setShowPaywall(true);
+      return;
+    }
+
     // Check limit — Pro users have unlimited searches
     if (!isPro && searchCount >= FREE_LIMIT) {
       setShowPaywall(true);
       return;
     }
 
-    // Increment count
-    const newCount = await incrementServerSearchCount(user?.uid);
+    // Increment count server-side
+    const newCount = await incrementServerSearchCount(user.uid);
     setSearchCount(newCount);
 
     setSearchQ(query);
@@ -956,7 +986,7 @@ export default function App() {
     }
   };
 
-  const remaining = isPro ? "Unlimited" : Math.max(0, FREE_LIMIT - searchCount);
+  const remaining = isPro ? null : Math.max(0, FREE_LIMIT - searchCount);
 
   return (
     <div style={{ fontFamily: "'DM Sans', sans-serif", background: B.bg, minHeight: "100vh", color: B.black }}>
@@ -1002,14 +1032,14 @@ export default function App() {
 
           {/* Search counter */}
           <div style={{
-            background: isPro ? "#F0FDF4" : remaining > 1 ? "#F0FDF4" : remaining === 1 ? "#FFFBEB" : "#FFF1F2",
-            color: isPro ? "#15803D" : remaining > 1 ? "#15803D" : remaining === 1 ? "#D97706" : "#BE123C",
-            border: `0.5px solid ${isPro ? "#BBF7D0" : remaining > 1 ? "#BBF7D0" : remaining === 1 ? "#FDE68A" : "#FECDD3"}`,
+            background: isPro ? "#F0FDF4" : remaining > 0 ? "#F0FDF4" : "#FFF1F2",
+            color: isPro ? "#15803D" : remaining > 0 ? "#15803D" : "#BE123C",
+            border: `0.5px solid ${isPro ? "#BBF7D0" : remaining > 0 ? "#BBF7D0" : "#FECDD3"}`,
             padding: "6px 10px", borderRadius: "20px",
             fontFamily: "'DM Sans', sans-serif", fontSize: "11px", fontWeight: 700,
             whiteSpace: "nowrap",
           }}>
-            {isPro ? "Pro ✓" : `${remaining}/${FREE_LIMIT}`}
+            {isPro ? "Pro ✓" : remaining > 0 ? "1 left" : "0 left"}
           </div>
 
           {user ? (

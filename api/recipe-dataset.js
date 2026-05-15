@@ -1,115 +1,112 @@
 /**
  * Recipe Dataset Layer
- * ────────────────────
- * Saves every generated recipe permanently to Firestore.
- * Structure:
- *
- * recipes/{slugKey}/
- *   query: "jollof rice"
- *   slugKey: "jollof-rice"
- *   recipes: [...] full recipe array
- *   provider: "claude"
- *   model: "claude-haiku-4-5-20251001"
- *   searchCount: 847
- *   firstGeneratedAt: timestamp
- *   lastSearchedAt: timestamp
- *   isPro: false
- *
- * analytics/searches/
- *   topQueries: { "jollof rice": 847, "carbonara": 312, ... }
- *   totalSearches: 12043
- *   totalRecipes: 4821
+ * Saves recipes to Firestore via REST API (no firebase-admin needed)
  */
 
-import { initializeApp, getApps, cert } from "firebase-admin/app";
-import { getFirestore, FieldValue } from "firebase-admin/firestore";
-
-// Init Firebase Admin (server-side only)
-function getAdminDb() {
-  if (!getApps().length) {
-    initializeApp({
-      credential: cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-      }),
-    });
-  }
-  return getFirestore();
-}
-
-// Convert query to a clean Firestore document key
 export function slugify(query) {
-  return query
-    .toLowerCase()
-    .trim()
+  return query.toLowerCase().trim()
     .replace(/[^a-z0-9\s-]/g, "")
     .replace(/\s+/g, "-")
     .slice(0, 80);
 }
 
+// Get Firestore REST base URL
+function firestoreUrl(path) {
+  const projectId = process.env.FIREBASE_PROJECT_ID || "mama-k-recipies";
+  return `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${path}`;
+}
+
+// Convert JS value to Firestore REST format
+function toFirestoreValue(val) {
+  if (val === null || val === undefined) return { nullValue: null };
+  if (typeof val === "boolean") return { booleanValue: val };
+  if (typeof val === "number") return { integerValue: String(Math.round(val)) };
+  if (typeof val === "string") return { stringValue: val };
+  if (Array.isArray(val)) return { arrayValue: { values: val.map(toFirestoreValue) } };
+  if (typeof val === "object") {
+    const fields = {};
+    for (const [k, v] of Object.entries(val)) fields[k] = toFirestoreValue(v);
+    return { mapValue: { fields } };
+  }
+  return { stringValue: String(val) };
+}
+
 /**
  * Check Firestore for cached recipes
- * Returns null if not found or expired
  */
 export async function getCachedRecipes(query, isPro) {
   try {
-    const db = getAdminDb();
     const key = slugify(query) + (isPro ? "__pro" : "__free");
-    const snap = await db.collection("recipes").doc(key).get();
-    if (!snap.exists) return null;
-
-    const data = snap.data();
-
-    // Update search analytics without blocking
-    db.collection("recipes").doc(key).update({
-      searchCount: FieldValue.increment(1),
-      lastSearchedAt: FieldValue.serverTimestamp(),
-    }).catch(() => {});
-
-    // Update global analytics
-    db.collection("analytics").doc("searches").set({
-      totalSearches: FieldValue.increment(1),
-      [`topQueries.${slugify(query)}`]: FieldValue.increment(1),
-    }, { merge: true }).catch(() => {});
-
-    return data.recipes || null;
+    const url = firestoreUrl(`recipes/${key}`);
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const recipesField = data?.fields?.recipes;
+    if (!recipesField) return null;
+    // Decode array of maps
+    const recipes = recipesField.arrayValue?.values?.map(v => {
+      const fields = v.mapValue?.fields || {};
+      const out = {};
+      for (const [k, fv] of Object.entries(fields)) {
+        if (fv.stringValue !== undefined) out[k] = fv.stringValue;
+        else if (fv.integerValue !== undefined) out[k] = parseInt(fv.integerValue);
+        else if (fv.booleanValue !== undefined) out[k] = fv.booleanValue;
+        else if (fv.arrayValue) out[k] = fv.arrayValue.values?.map(av => av.stringValue || "") || [];
+        else if (fv.nullValue !== undefined) out[k] = null;
+      }
+      return out;
+    }) || [];
+    return recipes.length > 0 ? recipes : null;
   } catch {
     return null;
   }
 }
 
 /**
- * Save recipes to Firestore permanently
+ * Save recipes to Firestore dataset (non-blocking)
  */
 export async function saveRecipesToDataset(query, recipes, isPro, provider, model) {
   try {
-    const db = getAdminDb();
     const key = slugify(query) + (isPro ? "__pro" : "__free");
-    const slug = slugify(query);
+    const url = firestoreUrl(`recipes/${key}`);
 
-    await db.collection("recipes").doc(key).set({
-      query: query.toLowerCase().trim(),
-      slugKey: slug,
-      recipes,
-      isPro,
-      provider: provider || "claude",
-      model: model || "claude-haiku-4-5-20251001",
-      searchCount: 1,
-      firstGeneratedAt: FieldValue.serverTimestamp(),
-      lastSearchedAt: FieldValue.serverTimestamp(),
-    });
+    const body = {
+      fields: {
+        query: { stringValue: query.toLowerCase().trim() },
+        slugKey: { stringValue: slugify(query) },
+        isPro: { booleanValue: !!isPro },
+        provider: { stringValue: provider || "claude" },
+        model: { stringValue: model || "claude-haiku-4-5-20251001" },
+        searchCount: { integerValue: "1" },
+        recipes: toFirestoreValue(recipes.map(r => ({
+          title: r.title || "",
+          emoji: r.emoji || "",
+          tagline: r.tagline || "",
+          time: r.time || "",
+          difficulty: r.difficulty || "Easy",
+          servings: r.servings || 2,
+          calories: r.calories || 0,
+          cuisine: r.cuisine || "",
+          region: r.region || "",
+          tags: r.tags || [],
+          ingredients: r.ingredients || [],
+          steps: r.steps || [],
+          image: r.image || "",
+          imageSmall: r.imageSmall || "",
+          imageLarge: r.imageLarge || "",
+          photographer: r.photographer || "",
+        }))),
+      }
+    };
 
-    // Update global analytics
-    await db.collection("analytics").doc("searches").set({
-      totalSearches: FieldValue.increment(1),
-      totalRecipes: FieldValue.increment(recipes.length),
-      [`topQueries.${slug}`]: FieldValue.increment(1),
-      lastUpdated: FieldValue.serverTimestamp(),
-    }, { merge: true });
+    // Fire and forget — don't await, don't block the response
+    fetch(url, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).catch(() => {});
 
-  } catch (err) {
-    // Non-fatal — log but don't crash the request
-    console.error("Dataset save failed:", err.message);
+  } catch {
+    // Non-fatal
   }
 }

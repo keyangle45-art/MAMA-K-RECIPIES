@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { auth, signInWithGoogle, signOutUser, getServerSearchCount, incrementServerSearchCount, syncBookmarksToFirestore, loadBookmarksFromFirestore, getUserProStatus } from "./firebase.js";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { auth, signInWithGoogle, signOutUser, getServerSearchCount, incrementServerSearchCount, syncBookmarksToFirestore, loadBookmarksFromFirestore, getUserProStatus, logSearchHistory, getSearchHistory, updatePreferenceProfile, getAdaptiveSectionOrder, trackEngagement } from "./firebase.js";
 import { onAuthStateChanged } from "firebase/auth";
 
 /* ─── Brand ──────────────────────────────────────────────── */
@@ -855,6 +855,189 @@ const Paywall = ({ user, onSignIn, onDismiss, onUpgrade, onLoading }) => (
 );
 
 /* ─── Main App ───────────────────────────────────────────── */
+/* ─── Infinite Feed Component ────────────────────────────── */
+const InfiniteFeed = ({ user, preferences, recentSearches, isPro, bookmarks, onBM, onOpen, onUpgrade }) => {
+  const [batches, setBatches] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [batch, setBatch] = useState(0);
+  const [done, setDone] = useState(false);
+  const [upgradePrompt, setUpgradePrompt] = useState(false);
+  const loaderRef = useRef(null);
+  const dwellTimers = useRef({});
+
+  const loadNextBatch = useCallback(async () => {
+    if (loading || done) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/feed", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ preferences, recentSearches, batch, isPro, uid: user?.uid }),
+      });
+      const data = await res.json();
+      if (data.done) {
+        setDone(true);
+        setUpgradePrompt(data.upgradePrompt);
+      } else if (data.recipes?.length > 0) {
+        setBatches(prev => [...prev, { recipes: data.recipes, query: data.query, id: batch }]);
+        setBatch(prev => prev + 1);
+      }
+    } catch {}
+    setLoading(false);
+  }, [batch, loading, done, preferences, recentSearches, isPro]);
+
+  // Load first batch on mount
+  useEffect(() => { loadNextBatch(); }, []);
+
+  // Intersection observer — load more when bottom sentinel visible
+  useEffect(() => {
+    if (!loaderRef.current) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting && !loading && !done) loadNextBatch(); },
+      { threshold: 0.1, rootMargin: "400px" }
+    );
+    obs.observe(loaderRef.current);
+    return () => obs.disconnect();
+  }, [loadNextBatch, loading, done]);
+
+  // Dwell time tracking — fires after 8s on a recipe
+  const startDwell = (recipeTitle, recipe) => {
+    if (dwellTimers.current[recipeTitle]) return;
+    dwellTimers.current[recipeTitle] = setTimeout(() => {
+      if (user?.uid) trackEngagement(user.uid, { type: "dwell", recipe, dwellSeconds: 8 });
+    }, 8000);
+  };
+  const clearDwell = (recipeTitle) => {
+    clearTimeout(dwellTimers.current[recipeTitle]);
+    delete dwellTimers.current[recipeTitle];
+  };
+
+  if (batches.length === 0 && loading) {
+    return (
+      <div style={{ padding: "60px 20px", textAlign: "center" }}>
+        <div style={{ fontSize: "36px", marginBottom: "16px", animation: "float 1.5s ease infinite", display: "inline-block" }}>🔥</div>
+        <div style={{ fontFamily: "Georgia, serif", fontSize: "18px", color: B.muted }}>
+          Building your personalised feed...
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 20px 40px" }}>
+      {batches.map((b) => (
+        <div key={b.id} style={{ marginBottom: "8px" }}>
+          {/* Batch label — shows what the algorithm is pulling */}
+          <div style={{
+            padding: "20px 4px 12px",
+            display: "flex", alignItems: "center", gap: "8px",
+          }}>
+            <div style={{ flex: 1, height: "0.5px", background: B.border }} />
+            <div style={{
+              fontFamily: "'DM Sans', sans-serif", fontSize: "10px",
+              color: B.muted, fontWeight: 600, letterSpacing: "0.12em",
+              textTransform: "uppercase", whiteSpace: "nowrap",
+            }}>
+              {b.query}
+            </div>
+            <div style={{ flex: 1, height: "0.5px", background: B.border }} />
+          </div>
+
+          {/* Recipe cards — 2 column grid on mobile, auto-fill on desktop */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+            gap: "12px",
+          }}>
+            {b.recipes.map((r, i) => (
+              <div
+                key={i}
+                onMouseEnter={() => startDwell(r.title, r)}
+                onMouseLeave={() => clearDwell(r.title)}
+              >
+                <RecipeCard
+                  r={r}
+                  idx={i}
+                  onOpen={() => {
+                    clearDwell(r.title);
+                    if (user?.uid) trackEngagement(user.uid, { type: "open", recipe: r });
+                    onOpen(r);
+                  }}
+                  bookmarked={bookmarks.some(bm => bm.title === r.title)}
+                  onBM={() => onBM(r)}
+                  wide
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      {/* Sentinel div — triggers next batch load */}
+      <div ref={loaderRef} style={{ height: "1px" }} />
+
+      {/* Loading indicator */}
+      {loading && (
+        <div style={{ padding: "32px", textAlign: "center" }}>
+          <div style={{ display: "flex", gap: "6px", justifyContent: "center" }}>
+            {[0, 1, 2].map(i => (
+              <div key={i} style={{
+                width: "6px", height: "6px", borderRadius: "50%",
+                background: B.orange, opacity: 0.7,
+                animation: "pulse 1.2s ease infinite",
+                animationDelay: `${i * 0.2}s`,
+              }} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Upgrade prompt for free users who hit batch limit */}
+      {upgradePrompt && (
+        <div onClick={onUpgrade} style={{
+          background: B.dark, borderRadius: "20px",
+          padding: "28px 24px", cursor: "pointer", margin: "16px 0",
+          textAlign: "center", transition: "opacity 0.2s",
+        }}
+          onMouseEnter={e => e.currentTarget.style.opacity = "0.9"}
+          onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+        >
+          <div style={{ fontSize: "32px", marginBottom: "12px" }}>🔥</div>
+          <div style={{
+            fontFamily: "Georgia, serif", fontSize: "22px",
+            color: "#fff", marginBottom: "8px",
+          }}>
+            Your feed goes deeper with Pro
+          </div>
+          <div style={{
+            fontFamily: "'DM Sans', sans-serif", fontSize: "13px",
+            color: "rgba(255,255,255,0.5)", marginBottom: "20px",
+          }}>
+            Unlock unlimited personalised recipe discovery
+          </div>
+          <div style={{
+            display: "inline-block",
+            background: B.orange, color: "#fff", borderRadius: "12px",
+            padding: "12px 28px", fontFamily: "'DM Sans', sans-serif",
+            fontSize: "14px", fontWeight: 600,
+          }}>
+            Upgrade to Pro — $4.99/month
+          </div>
+        </div>
+      )}
+
+      {/* Done — no more content (Pro users shouldn't hit this) */}
+      {done && !upgradePrompt && (
+        <div style={{ textAlign: "center", padding: "40px", color: B.muted }}>
+          <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "13px" }}>
+            You've explored everything for now. Come back tomorrow for fresh picks.
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function App() {
   useEffect(() => {
     if (!document.querySelector("#mamak-css")) {
@@ -879,6 +1062,12 @@ export default function App() {
   const [isPro, setIsPro] = useState(false);
   const [searchCount, setSearchCount] = useState(0);
   const [loadingPayment, setLoadingPayment] = useState(false);
+  // Phase 1
+  const [searchHistory, setSearchHistory] = useState([]);
+  const [sectionOrder, setSectionOrder] = useState(null);
+  const [preferences, setPreferences] = useState(null);
+  const [feedKey, setFeedKey] = useState(0);
+  const [feedTab, setFeedTab] = useState("foryou");
 
   // Auth state + load user data from Firestore on sign in
   useEffect(() => {
@@ -886,20 +1075,28 @@ export default function App() {
       setUser(u);
       setAuthReady(true);
       if (u) {
-        // Load Pro status
-        const pro = await getUserProStatus(u.uid);
+        const [pro, count, bm, history, order] = await Promise.all([
+          getUserProStatus(u.uid),
+          getServerSearchCount(u.uid),
+          loadBookmarksFromFirestore(u.uid),
+          getSearchHistory(u.uid),
+          getAdaptiveSectionOrder(u.uid),
+        ]);
         setIsPro(pro);
-        // Load search count
-        const count = await getServerSearchCount(u.uid);
         setSearchCount(count);
-        // Load bookmarks from Firestore
-        const bm = await loadBookmarksFromFirestore(u.uid);
         setBookmarks(bm);
+        setSearchHistory(history);
+        setSectionOrder(order);
+        // Load preference profile for feed personalization
+        const { getPreferenceProfile } = await import("./firebase.js");
+        const prefs = await getPreferenceProfile(u.uid);
+        setPreferences(prefs);
       } else {
-        // Guest — use localStorage
         setSearchCount(parseInt(localStorage.getItem("mk_sc_guest") || "0"));
         setBookmarks(getBM());
         setIsPro(false);
+        setSearchHistory([]);
+        setSectionOrder(null);
       }
     });
     return unsub;
@@ -934,29 +1131,53 @@ export default function App() {
       ? bookmarks.filter(b => b.title !== r.title)
       : [...bookmarks, r];
     setBookmarks(updated);
-    saveBM(updated); // always keep localStorage as fallback
-    if (user?.uid) syncBookmarksToFirestore(user.uid, updated);
+    saveBM(updated);
+    if (user?.uid) {
+      syncBookmarksToFirestore(user.uid, updated);
+      // Bookmarking = strong preference signal
+      if (!isBM(r)) {
+        updatePreferenceProfile(user.uid, {
+          query: r.title,
+          cuisine: r.cuisine,
+          region: r.region,
+          difficulty: r.difficulty,
+          tags: r.tags || [],
+        });
+      }
+    }
   };
 
   const doSearch = async (q, label, preloaded) => {
     const query = (q || "").trim();
     if (!query) return;
 
-    // Force sign in — no anonymous searches allowed
-    if (!user) {
-      setShowPaywall(true);
-      return;
-    }
+    // Force sign in
+    if (!user) { setShowPaywall(true); return; }
 
-    // Check limit — Pro users have unlimited searches
-    if (!isPro && searchCount >= FREE_LIMIT) {
-      setShowPaywall(true);
-      return;
-    }
+    // Check limit
+    if (!isPro && searchCount >= FREE_LIMIT) { setShowPaywall(true); return; }
 
-    // Increment count server-side
+    // Increment count
     const newCount = await incrementServerSearchCount(user.uid);
     setSearchCount(newCount);
+
+    // Log search history (non-blocking)
+    logSearchHistory(user.uid, query).then(() => {
+      setSearchHistory(prev => [{ query, searchedAt: new Date(), id: Date.now().toString() }, ...prev].slice(0, 20));
+    });
+
+    // Update preference profile from section metadata if available
+    if (preloaded) {
+      updatePreferenceProfile(user.uid, {
+        query,
+        cuisine: preloaded.cuisine,
+        region: preloaded.region,
+        difficulty: preloaded.difficulty,
+        tags: preloaded.tags || [],
+      });
+    } else {
+      updatePreferenceProfile(user.uid, { query });
+    }
 
     setSearchQ(query);
     setSearchLabel(label || query);
@@ -1076,7 +1297,8 @@ export default function App() {
 
                   {/* Menu items */}
                   {[
-                    { icon: "👤", label: "Account", action: () => { alert(`Account\n\nName: ${user.displayName}\nEmail: ${user.email}\nPlan: ${isPro ? "Pro" : "Free"}`); setMenuOpen(false); } },
+                    { icon: "👤", label: "Account", action: () => { alert(`Account\n\nName: ${user.displayName}\nEmail: ${user.email}\nPlan: ${isPro ? "Pro" : "Free"}\nSearches today: ${searchCount}`); setMenuOpen(false); } },
+                    { icon: "🔍", label: `Search History ${searchHistory.length > 0 ? `(${searchHistory.length})` : ""}`, action: () => { setView("history"); setMenuOpen(false); } },
                     { icon: "🔖", label: "Saved Recipes", action: () => { setView("saved"); setMenuOpen(false); } },
                     { icon: "⭐", label: isPro ? "Manage Subscription" : "Upgrade to Pro", action: () => { setShowPaywall(true); setMenuOpen(false); }, highlight: !isPro },
                     { icon: "⚙️", label: "Settings", action: () => { alert("Settings coming soon"); setMenuOpen(false); } },
@@ -1227,49 +1449,132 @@ export default function App() {
             </div>
           </div>
 
-          {/* REGIONS BAR */}
-          {/* TOP CATEGORIES */}
-          <div style={{ background: B.white, borderBottom: `0.5px solid ${B.border}` }}>
-            <div style={{ padding: `12px 0 12px ${GUTTER}`, fontSize: "10px", fontWeight: 600, color: B.muted, letterSpacing: "0.12em", textTransform: "uppercase" }}>
-              Top Categories
-            </div>
-            <div style={{
-              display: "flex", gap: "8px", overflowX: "auto", overflowY: "hidden",
-              paddingLeft: GUTTER, paddingRight: GUTTER, paddingBottom: "14px",
-              scrollSnapType: "x mandatory", scrollbarWidth: "none",
-            }}>
-              {REGIONS.map((r, i) => (
-                <button key={r.label} onClick={() => doSearch(r.q, r.label)} style={{
-                  background: B.bg,
-                  border: `0.5px solid ${B.border}`,
-                  borderRadius: "20px", padding: "7px 14px",
-                  cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
-                  fontSize: "12px", fontWeight: 500, color: B.dark,
-                  display: "flex", alignItems: "center", gap: "5px",
-                  whiteSpace: "nowrap", flexShrink: 0,
-                  scrollSnapAlign: "start",
+          {/* FOR YOU / DISCOVER TABS */}
+          <div style={{ background: B.white, borderBottom: `0.5px solid ${B.border}`, position: "sticky", top: "56px", zIndex: 80 }}>
+            {/* Feed tabs */}
+            <div style={{ display: "flex", padding: "0 20px", gap: "0" }}>
+              {[
+                { id: "foryou", label: user ? "For You" : "Discover", icon: user ? "✦" : "🌍" },
+                { id: "discover", label: "Explore", icon: "🔎" },
+              ].map(tab => (
+                <button key={tab.id} onClick={() => setFeedTab(tab.id)} style={{
+                  background: "none", border: "none", cursor: "pointer",
+                  padding: "14px 16px 12px",
+                  fontFamily: "'DM Sans', sans-serif", fontSize: "13px",
+                  fontWeight: feedTab === tab.id ? 600 : 400,
+                  color: feedTab === tab.id ? B.dark : B.muted,
+                  borderBottom: `2px solid ${feedTab === tab.id ? B.orange : "transparent"}`,
                   transition: "all 0.18s",
+                  display: "flex", alignItems: "center", gap: "5px",
+                }}>
+                  <span style={{ fontSize: "12px" }}>{tab.icon}</span>
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Categories strip */}
+            <div style={{
+              display: "flex", gap: "8px", overflowX: "auto",
+              paddingLeft: "20px", paddingRight: "20px", paddingBottom: "12px",
+              scrollbarWidth: "none",
+            }}>
+              {REGIONS.map((r) => (
+                <button key={r.label} onClick={() => doSearch(r.q, r.label)} style={{
+                  background: B.bg, border: `0.5px solid ${B.border}`,
+                  borderRadius: "20px", padding: "6px 12px",
+                  cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
+                  fontSize: "11px", fontWeight: 500, color: B.dark,
+                  display: "flex", alignItems: "center", gap: "4px",
+                  whiteSpace: "nowrap", flexShrink: 0, transition: "all 0.18s",
                 }}
-                  onMouseEnter={e => { e.currentTarget.style.background = B.dark; e.currentTarget.style.color = "#fff"; e.currentTarget.style.borderColor = B.dark; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = B.bg; e.currentTarget.style.color = B.dark; e.currentTarget.style.borderColor = B.border; }}
+                  onMouseEnter={e => { e.currentTarget.style.background = B.dark; e.currentTarget.style.color = "#fff"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = B.bg; e.currentTarget.style.color = B.dark; }}
                 >
-                  <span style={{ fontSize: "14px" }}>{r.emoji}</span>
-                  <span>{r.label}</span>
+                  <span>{r.emoji}</span> {r.label}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* FEATURED SECTIONS */}
-          {FEATURED_SECTIONS.map(section => (
-            <SectionRow
-              key={section.id}
-              section={section}
-              onSelect={doSearch}
-              bookmarks={bookmarks}
-              onBM={toggleBM}
-            />
-          ))}
+          {/* FOR YOU — Infinite personalized feed */}
+          {feedTab === "foryou" && (
+            <>
+              {/* Recent searches strip */}
+              {user && searchHistory.length > 0 && (
+                <div style={{ background: B.bg, padding: "12px 20px", borderBottom: `0.5px solid ${B.border}` }}>
+                  <div style={{ fontSize: "10px", fontWeight: 600, color: B.muted, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "8px" }}>
+                    Recent
+                  </div>
+                  <div style={{ display: "flex", gap: "8px", overflowX: "auto", scrollbarWidth: "none" }}>
+                    {searchHistory.slice(0, 6).map((item, i) => (
+                      <button key={i} onClick={() => doSearch(item.query, item.query)} style={{
+                        background: B.white, border: `0.5px solid ${B.border}`,
+                        borderRadius: "20px", padding: "5px 12px", flexShrink: 0,
+                        cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
+                        fontSize: "11px", color: B.dark, whiteSpace: "nowrap",
+                        transition: "all 0.18s",
+                      }}
+                        onMouseEnter={e => { e.currentTarget.style.background = B.dark; e.currentTarget.style.color = "#fff"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = B.white; e.currentTarget.style.color = B.dark; }}
+                      >↩ {item.query}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {user ? (
+                <InfiniteFeed
+                  key={feedKey}
+                  user={user}
+                  preferences={preferences}
+                  recentSearches={searchHistory}
+                  isPro={isPro}
+                  bookmarks={bookmarks}
+                  onBM={toggleBM}
+                  onOpen={r => { setSelected(r); setView("detail"); }}
+                  onUpgrade={handleUpgrade}
+                />
+              ) : (
+                /* Guest — show sign-in prompt then curated sections */
+                <div>
+                  <div onClick={() => setShowPaywall(true)} style={{
+                    background: B.dark, margin: "16px 20px", borderRadius: "16px",
+                    padding: "20px", cursor: "pointer", display: "flex",
+                    alignItems: "center", justifyContent: "space-between", gap: "16px",
+                  }}>
+                    <div>
+                      <div style={{ fontFamily: "Georgia, serif", fontSize: "16px", color: "#fff", marginBottom: "4px" }}>
+                        Sign in for a personalised feed
+                      </div>
+                      <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.5)" }}>
+                        Recipes that adapt to your taste
+                      </div>
+                    </div>
+                    <div style={{ background: B.orange, color: "#fff", borderRadius: "10px", padding: "8px 16px", fontSize: "12px", fontWeight: 600, whiteSpace: "nowrap" }}>
+                      Sign in
+                    </div>
+                  </div>
+                  {(sectionOrder || FEATURED_SECTIONS.map(s => s.id)).map(id => {
+                    const section = FEATURED_SECTIONS.find(s => s.id === id);
+                    if (!section) return null;
+                    return <SectionRow key={section.id} section={section} onSelect={doSearch} bookmarks={bookmarks} onBM={toggleBM} />;
+                  })}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* EXPLORE — Curated sections (always available) */}
+          {feedTab === "discover" && (
+            <>
+              {(sectionOrder || FEATURED_SECTIONS.map(s => s.id)).map(id => {
+                const section = FEATURED_SECTIONS.find(s => s.id === id);
+                if (!section) return null;
+                return <SectionRow key={section.id} section={section} onSelect={doSearch} bookmarks={bookmarks} onBM={toggleBM} />;
+              })}
+            </>
+          )}
 
           {/* FOOTER */}
           <footer style={{ background: B.dark, padding: "48px 40px" }}>
@@ -1334,6 +1639,55 @@ export default function App() {
                   onOpen={() => { setSelected(r); setView("detail"); }}
                   bookmarked={true} onBM={() => toggleBM(r)}
                 />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── HISTORY ── */}
+      {view === "history" && (
+        <div style={{ maxWidth: "800px", margin: "0 auto", padding: "40px 20px" }}>
+          <button onClick={() => setView("home")} style={{
+            background: "none", border: "none", cursor: "pointer",
+            fontFamily: "'DM Sans', sans-serif", fontSize: "14px",
+            color: B.orange, fontWeight: 500, padding: 0, marginBottom: "24px", display: "block",
+          }}>‹ Home</button>
+
+          <div style={{ fontFamily: "Georgia, serif", fontSize: "32px", fontWeight: 400, marginBottom: "6px" }}>
+            Search History
+          </div>
+          <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "13px", color: B.muted, marginBottom: "32px" }}>
+            {searchHistory.length} recent searches
+          </div>
+
+          {searchHistory.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "80px 0", color: B.muted }}>
+              <div style={{ fontSize: "48px", marginBottom: "16px", opacity: 0.3 }}>🔍</div>
+              <div style={{ fontFamily: "Georgia, serif", fontSize: "22px" }}>No searches yet</div>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+              {searchHistory.map((item, i) => (
+                <div key={i} onClick={() => doSearch(item.query, item.query)} style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  padding: "14px 16px", borderRadius: "12px", cursor: "pointer",
+                  transition: "background 0.15s",
+                  animation: "fadeUp 0.3s ease both", animationDelay: `${i * 25}ms`,
+                }}
+                  onMouseEnter={e => e.currentTarget.style.background = B.bg}
+                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <span style={{ fontSize: "14px", opacity: 0.4 }}>🔍</span>
+                    <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "14px", color: B.dark, textTransform: "capitalize" }}>
+                      {item.query}
+                    </span>
+                  </div>
+                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "11px", color: B.muted }}>
+                    Search again ↩
+                  </span>
+                </div>
               ))}
             </div>
           )}

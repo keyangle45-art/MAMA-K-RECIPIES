@@ -1,231 +1,226 @@
-import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
-import { getFirestore, doc, getDoc, setDoc, updateDoc, increment, serverTimestamp, arrayUnion, collection, query, orderBy, limit, getDocs } from "firebase/firestore";
+import { callAI } from "./ai-provider.js";
 
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-};
+// Feed cache — keyed by preference fingerprint + batch number
+const feedCache = new Map();
+const CACHE_TTL = 1000 * 60 * 20; // 20 mins
 
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const googleProvider = new GoogleAuthProvider();
+// Rate limit per IP
+const rateLimits = new Map();
+function isRateLimited(ip) {
+  const now = Date.now();
+  const e = rateLimits.get(ip) || { count: 0, start: now };
+  if (now - e.start > 60000) { rateLimits.set(ip, { count: 1, start: now }); return false; }
+  if (e.count >= 20) return true;
+  e.count++; rateLimits.set(ip, e);
+  return false;
+}
 
-export const signInWithGoogle = () => signInWithPopup(auth, googleProvider);
-export const signOutUser = () => signOut(auth);
+/**
+ * Generate personalized feed queries based on user behavior
+ * This is the intelligence layer — turns preferences into discovery
+ */
+function buildFeedQueries(preferences, recentSearches, batch, isPro) {
+  const cuisines = preferences?.cuisines || {};
+  const regions = preferences?.regions || {};
+  const dietary = preferences?.dietary || {};
+  const hour = new Date().getHours();
+  const timeSlot = hour < 11 ? "breakfast" : hour < 15 ? "lunch" : hour < 20 ? "dinner" : "late night snack";
 
-/* ─── Date helpers ───────────────────────────────────────── */
-const todayKey = () => new Date().toISOString().slice(0, 10);
+  // Sort cuisines/regions by score
+  const topCuisines = Object.entries(cuisines).sort((a, b) => b[1] - a[1]).map(([k]) => k.replace(/_/g, " "));
+  const topRegions = Object.entries(regions).sort((a, b) => b[1] - a[1]).map(([k]) => k.replace(/_/g, " "));
+  const isHealthy = (dietary.healthy || 0) > 2;
+  const isAfricanFan = (regions.west_african || 0) + (regions.nigeria || 0) > 3;
 
-/* ─── Search count (server-side per user per day) ────────── */
-export const getServerSearchCount = async (uid) => {
-  if (!uid) return parseInt(localStorage.getItem("mk_sc_guest") || "0");
-  try {
-    const snap = await getDoc(doc(db, "users", uid));
-    if (!snap.exists()) return 0;
-    return snap.data().searches?.[todayKey()] || 0;
-  } catch { return 0; }
-};
+  const batchQueries = {
+    // Batch 0 — core interests
+    0: topCuisines[0]
+      ? `popular ${topCuisines[0]} dishes`
+      : "popular world dishes",
 
-export const incrementServerSearchCount = async (uid) => {
-  if (!uid) {
-    const c = parseInt(localStorage.getItem("mk_sc_guest") || "0") + 1;
-    localStorage.setItem("mk_sc_guest", c);
-    return c;
-  }
-  try {
-    const ref = doc(db, "users", uid);
-    const today = todayKey();
-    const snap = await getDoc(ref);
-    if (!snap.exists()) {
-      await setDoc(ref, { searches: { [today]: 1 }, createdAt: serverTimestamp() });
-      return 1;
+    // Batch 1 — time-aware
+    1: topCuisines[0]
+      ? `${topCuisines[0]} ${timeSlot} recipes`
+      : `quick ${timeSlot} recipes`,
+
+    // Batch 2 — depth expansion (adjacent to top interest)
+    2: isAfricanFan
+      ? "West African street food and snacks"
+      : topCuisines[0]
+        ? `traditional ${topCuisines[0]} comfort food`
+        : "comfort food from around the world",
+
+    // Batch 3 — discovery (similar but new)
+    3: topRegions[1]
+      ? `popular ${topRegions[1]} dishes`
+      : "trending global recipes 2025",
+
+    // Batch 4 — dietary alignment
+    4: isHealthy
+      ? `healthy ${topCuisines[0] || "international"} meals under 400 calories`
+      : `rich flavourful ${topCuisines[0] || "global"} dishes`,
+
+    // Batch 5 — deep dive into top interest
+    5: isAfricanFan
+      ? "Nigerian party and celebration food"
+      : topCuisines[0]
+        ? `authentic home cooking ${topCuisines[0]}`
+        : "authentic home cooking from top cuisines",
+
+    // Batch 6 — surprise discovery
+    6: ["Japanese street food", "Moroccan tagine variations", "Brazilian churrasco", "Lebanese mezze", "Korean BBQ sides"][Math.floor(Math.random() * 5)],
+
+    // Batch 7+ — rotate through interests deeper
+    7: topCuisines[1]
+      ? `best ${topCuisines[1]} recipes`
+      : "hidden gem recipes from lesser known cuisines",
+
+    // Batch 8 — trending + personal mix
+    8: `trending ${topCuisines[0] || "global"} recipes this week`,
+
+    // Batch 9 — seasonal/occasion
+    9: isAfricanFan
+      ? "African fusion modern recipes"
+      : `modern fusion recipes inspired by ${topCuisines[0] || "world cuisines"}`,
+  };
+
+  // For batches beyond defined ones, cycle through variations
+  const batchKey = batch % 10;
+  let baseQuery = batchQueries[batchKey] || `popular ${topCuisines[Math.floor(Math.random() * Math.max(1, topCuisines.length))] || "world"} dishes`;
+
+  // Inject recent searches for relevance continuity
+  if (recentSearches?.length > 0 && batch % 3 === 0) {
+    const recent = recentSearches[Math.floor(Math.random() * Math.min(3, recentSearches.length))];
+    if (recent?.query) {
+      baseQuery = `dishes similar to ${recent.query}`;
     }
-    const current = snap.data().searches?.[today] || 0;
-    await updateDoc(ref, { [`searches.${today}`]: increment(1) });
-    return current + 1;
-  } catch { return 0; }
-};
+  }
 
-/* ─── Bookmarks ──────────────────────────────────────────── */
-export const syncBookmarksToFirestore = async (uid, bookmarks) => {
-  if (!uid) return;
-  try { await setDoc(doc(db, "users", uid), { bookmarks }, { merge: true }); }
-  catch {}
-};
+  return baseQuery;
+}
 
-export const loadBookmarksFromFirestore = async (uid) => {
-  if (!uid) return JSON.parse(localStorage.getItem("mk_bm") || "[]");
-  try {
-    const snap = await getDoc(doc(db, "users", uid));
-    if (snap.exists() && snap.data().bookmarks) return snap.data().bookmarks;
-  } catch {}
-  return [];
-};
+export default async function handler(req, res) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  if (req.method === "OPTIONS") return res.status(200).end();
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-/* ─── Pro status ─────────────────────────────────────────── */
-export const getUserProStatus = async (uid) => {
-  if (!uid) return false;
-  try {
-    const snap = await getDoc(doc(db, "users", uid));
-    return snap.exists() && snap.data().isPro === true;
-  } catch { return false; }
-};
+  const ip = req.headers["x-forwarded-for"]?.split(",")[0] || "unknown";
+  if (isRateLimited(ip)) return res.status(429).json({ error: "Too many requests" });
 
-export const setUserPro = async (uid) => {
-  if (!uid) return;
-  await setDoc(doc(db, "users", uid), {
-    isPro: true,
-    proSince: serverTimestamp(),
-  }, { merge: true });
-};
+  const { preferences, recentSearches, batch = 0, isPro = false, uid, mode } = req.body || {};
 
-/* ─── PHASE 2: Engagement Tracking ──────────────────────── */
-/**
- * Track engagement signals — feeds into personalization scoring
- * Called when user: opens a recipe, dwells on it, bookmarks it
- */
-export const trackEngagement = async (uid, signal) => {
-  if (!uid) return;
-  try {
-    const { type, recipe, dwellSeconds } = signal;
-    // type: "open" | "dwell" | "bookmark" | "scroll_depth"
-    const updates = {
-      lastActiveAt: serverTimestamp(),
-      [`engagement.${type}Count`]: increment(1),
-    };
-    // Update cuisine/region scores based on engagement strength
-    const weight = type === "bookmark" ? 5 : type === "dwell" && dwellSeconds > 30 ? 3 : 1;
-    if (recipe?.cuisine) updates[`preferences.cuisines.${recipe.cuisine.toLowerCase().replace(/\s+/g, "_")}`] = increment(weight);
-    if (recipe?.region)  updates[`preferences.regions.${recipe.region.toLowerCase().replace(/\s+/g, "_")}`] = increment(weight);
-    if (recipe?.difficulty) updates[`preferences.difficulty.${recipe.difficulty.toLowerCase()}`] = increment(weight);
-    await updateDoc(doc(db, "users", uid), updates);
-  } catch {}
-};
+  // Trending mode — return globally popular dishes
+  if (mode === "trending" || batch === 99) {
+    const trendingCacheKey = "trending__global";
+    const cached = feedCache.get(trendingCacheKey);
+    if (cached && Date.now() - cached.time < CACHE_TTL) {
+      return res.status(200).json({ recipes: cached.data, query: "trending", batch: 99 });
+    }
+    try {
+      const trendingQueries = [
+        "Nigerian Party Jollof Rice authentic",
+        "Viral Marry Me Chicken",
+        "Japanese Tonkotsu Ramen",
+        "Mexican Birria Tacos",
+        "Italian Carbonara authentic",
+        "West African Suya spiced meat",
+        "Korean Beef Bulgogi",
+        "Moroccan Lamb Tagine",
+      ];
+      const results = await Promise.all(
+        trendingQueries.slice(0, 4).map(async q => {
+          const text = await callAI(`One recipe for: "${q}". JSON object: {"title":string,"emoji":emoji,"tagline":max 10 words,"time":string,"difficulty":"Easy"|"Medium"|"Advanced","servings":number,"calories":number,"cuisine":string,"region":string,"tags":[2 strings],"ingredients":[6-8 strings],"steps":[4-5 strings]}. ONLY raw JSON object.`, 600);
+          try { return JSON.parse(text.replace(/^```json\s*/i,"").replace(/```\s*$/i,"").trim()); }
+          catch { return null; }
+        })
+      );
+      const trending = results.filter(Boolean);
 
-/**
- * Log every search to user's history
- * Structure: users/{uid}/searchHistory/{timestamp}
- * { query, timestamp, resultCount, cuisine, region }
- */
-export const logSearchHistory = async (uid, query, resultCount = 0) => {
-  if (!uid) return;
-  try {
-    const entry = {
-      query: query.toLowerCase().trim(),
-      searchedAt: serverTimestamp(),
-      resultCount,
-      id: Date.now().toString(),
-    };
-    // Store last 50 searches in user doc as array
-    await setDoc(doc(db, "users", uid), {
-      searchHistory: arrayUnion(entry),
-      lastActiveAt: serverTimestamp(),
-    }, { merge: true });
-  } catch {}
-};
+      // Add Pexels images
+      const pexelsKey = process.env.PEXELS_API_KEY;
+      const withImages = await Promise.all(
+        trending.map(async r => {
+          try {
+            const q = encodeURIComponent(`${r.title} food dish`);
+            const pRes = await fetch(`https://api.pexels.com/v1/search?query=${q}&per_page=1&orientation=landscape`, { headers: { Authorization: pexelsKey } });
+            const pData = await pRes.json();
+            const photo = pData?.photos?.[0];
+            return { ...r, imageSmall: photo?.src?.tiny, image: photo?.src?.medium, imageLarge: photo?.src?.large2x, photographer: photo?.photographer };
+          } catch { return r; }
+        })
+      );
 
-export const getSearchHistory = async (uid) => {
-  if (!uid) return [];
-  try {
-    const snap = await getDoc(doc(db, "users", uid));
-    if (!snap.exists()) return [];
-    const history = snap.data().searchHistory || [];
-    // Return last 20, most recent first
-    return history.slice(-20).reverse();
-  } catch { return []; }
-};
+      feedCache.set(trendingCacheKey, { data: withImages, time: Date.now() });
+      return res.status(200).json({ recipes: withImages, query: "trending", batch: 99 });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
 
-/* ─── PHASE 1: User Preference Profile ──────────────────── */
-/**
- * Update preference profile silently on every search + bookmark
- * Tracks: cuisines, regions, difficulty, dietary patterns, activity times
- */
-export const updatePreferenceProfile = async (uid, data) => {
-  if (!uid) return;
-  try {
-    const { query, cuisine, region, difficulty, tags = [] } = data;
-    const hour = new Date().getHours();
-    const timeSlot = hour < 11 ? "morning" : hour < 15 ? "afternoon" : hour < 20 ? "evening" : "night";
-
-    const updates = {
-      lastActiveAt: serverTimestamp(),
-      [`preferences.activityTimes.${timeSlot}`]: increment(1),
-    };
-
-    if (cuisine) updates[`preferences.cuisines.${cuisine.toLowerCase().replace(/\s+/g, "_")}`] = increment(1);
-    if (region)  updates[`preferences.regions.${region.toLowerCase().replace(/\s+/g, "_")}`] = increment(1);
-    if (difficulty) updates[`preferences.difficulty.${difficulty.toLowerCase()}`] = increment(1);
-
-    // Track dietary signals from tags
-    tags.forEach(tag => {
-      const t = tag.toLowerCase();
-      if (["vegan","vegetarian","healthy","low calorie","low-cal","plant-based"].some(k => t.includes(k))) {
-        updates["preferences.dietary.healthy"] = increment(1);
-      }
-      if (["spicy","hot","chili"].some(k => t.includes(k))) {
-        updates["preferences.dietary.spicy"] = increment(1);
-      }
-      if (["quick","easy","fast","30 min","20 min"].some(k => t.includes(k))) {
-        updates["preferences.dietary.quick"] = increment(1);
-      }
+  // Free users get 5 feed batches per session, Pro gets unlimited
+  const batchLimit = isPro ? 999 : 5;
+  if (batch >= batchLimit) {
+    return res.status(200).json({
+      recipes: [],
+      query: "",
+      batch,
+      done: true,
+      upgradePrompt: !isPro,
     });
-
-    // Track African food interest
-    const africanKeywords = ["nigerian","jollof","egusi","african","ghanaian","senegalese","ethiopian","kenyan","yoruba","igbo"];
-    if (africanKeywords.some(k => query?.toLowerCase().includes(k))) {
-      updates["preferences.regions.west_african"] = increment(2); // weight African searches higher
-    }
-
-    await updateDoc(doc(db, "users", uid), updates);
-  } catch {}
-};
-
-export const getPreferenceProfile = async (uid) => {
-  if (!uid) return null;
-  try {
-    const snap = await getDoc(doc(db, "users", uid));
-    if (!snap.exists()) return null;
-    return snap.data().preferences || null;
-  } catch { return null; }
-};
-
-/**
- * Get ordered section IDs based on user preferences
- * Returns array of section IDs sorted by user affinity
- */
-export const getAdaptiveSectionOrder = async (uid) => {
-  const defaultOrder = [
-    "top-african", "top-american", "top-british",
-    "top-european", "top-asian", "legacy", "healthy", "community"
-  ];
-  if (!uid) return defaultOrder;
-
-  try {
-    const prefs = await getPreferenceProfile(uid);
-    if (!prefs) return defaultOrder;
-
-    const regions = prefs.regions || {};
-    const dietary = prefs.dietary || {};
-
-    // Score each section based on user behavior
-    const scores = {
-      "top-african":  (regions.west_african || 0) + (regions.east_african || 0) + (regions.nigeria || 0) * 2,
-      "top-american": (regions.usa || 0) + (regions.america || 0),
-      "top-british":  (regions.england || 0) + (regions.uk || 0) + (regions.britain || 0),
-      "top-european": (regions.italy || 0) + (regions.france || 0) + (regions.spain || 0) + (regions.europe || 0),
-      "top-asian":    (regions.japan || 0) + (regions.china || 0) + (regions.india || 0) + (regions.asia || 0),
-      "legacy":       0,
-      "healthy":      (dietary.healthy || 0) * 3,
-      "community":    0,
-    };
-
-    // Sort by score descending, keep default order for ties
-    return [...defaultOrder].sort((a, b) => (scores[b] || 0) - (scores[a] || 0));
-  } catch {
-    return defaultOrder;
   }
-};
+
+  // Build the personalized query
+  const feedQuery = buildFeedQueries(preferences, recentSearches, batch, isPro);
+
+  // Cache check
+  const cacheKey = `feed__${feedQuery}__${isPro}`;
+  const cached = feedCache.get(cacheKey);
+  if (cached && Date.now() - cached.time < CACHE_TTL) {
+    return res.status(200).json({ recipes: cached.data, query: feedQuery, batch, cached: true });
+  }
+
+  const count = isPro ? 6 : 4;
+
+  try {
+    const prompt = `Expert culinary database. Return ONLY a valid JSON array of exactly ${count} diverse recipes for: "${feedQuery}".
+Each: {"title":string,"emoji":emoji,"tagline":max 10 words no hyphens,"time":string,"difficulty":"Easy"|"Medium"|"Advanced","servings":number,"calories":number,"cuisine":string,"region":string,"tags":[2 strings],"ingredients":[6-10 strings],"steps":[4-6 strings]}.
+Make recipes feel authentic, varied in difficulty. ONLY raw JSON array.`;
+
+    const text = await callAI(prompt, 1800);
+    const clean = text.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
+    let recipes = JSON.parse(clean);
+    if (!Array.isArray(recipes)) throw new Error("Not array");
+
+    // Fetch images
+    const pexelsKey = process.env.PEXELS_API_KEY;
+    const withImages = await Promise.all(
+      recipes.map(async (r) => {
+        try {
+          const q = encodeURIComponent(`${r.title} food dish plated`);
+          const pRes = await fetch(
+            `https://api.pexels.com/v1/search?query=${q}&per_page=1&orientation=landscape`,
+            { headers: { Authorization: pexelsKey } }
+          );
+          const pData = await pRes.json();
+          const photo = pData?.photos?.[0];
+          if (!photo) return { ...r, image: null };
+          return {
+            ...r,
+            imageSmall: photo.src.tiny,
+            image: photo.src.medium,
+            imageLarge: photo.src.large2x,
+            photographer: photo.photographer,
+          };
+        } catch { return { ...r, image: null }; }
+      })
+    );
+
+    feedCache.set(cacheKey, { data: withImages, time: Date.now() });
+    return res.status(200).json({ recipes: withImages, query: feedQuery, batch, done: false });
+
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+}

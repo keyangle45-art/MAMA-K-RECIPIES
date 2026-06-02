@@ -8,176 +8,22 @@ const B = {
   orangeHover: "#E06612",
   black: "#0A0A0A",
   white: "#FFFFFF",
-  bg: "#F5F5F7",
-  cream: "#F3ECD8",
-  border: "#D2D2D7",
-  muted: "#86868B",
-  dark: "#1D1D1F",
+  bg: "#FAFAFA",
+  border: "#E8E8E8",
+  muted: "#8A8A8A",
+  dark: "#1A1A1A",
   card: "#FFFFFF",
 };
-
-/* ─── Data ───────────────────────────────────────────────── */
-const FEATURED_SECTIONS = [
-  {
-    id: "top-african",
-    title: "Top African Dishes",
-    subtitle: "Bold, soulful flavours from across the continent",
-    icon: "🌍",
-    dark: true,
-    searches: [
-      { q: "Nigerian Jollof Party Rice authentic", label: "Party Jollof Rice", emoji: "🍛", region: "Nigeria" },
-      { q: "West African Egusi Soup", label: "Egusi Soup", emoji: "🥣", region: "Nigeria" },
-      { q: "West African Pepper Soup goat meat", label: "Pepper Soup", emoji: "🍲", region: "Nigeria" },
-      { q: "Ghanaian Kelewele spiced plantain", label: "Kelewele", emoji: "🍌", region: "Ghana" },
-      { q: "Senegalese Thieboudienne fish rice", label: "Thieboudienne", emoji: "🐟", region: "Senegal" },
-      { q: "Ethiopian Doro Wat chicken stew", label: "Doro Wat", emoji: "🫕", region: "Ethiopia" },
-      { q: "South African Bobotie", label: "Bobotie", emoji: "🥘", region: "South Africa" },
-      { q: "Kenyan Nyama Choma grilled meat", label: "Nyama Choma", emoji: "🔥", region: "Kenya" },
-    ],
-  },
-  {
-    id: "top-american",
-    title: "Top American Dishes",
-    subtitle: "Classic American comfort food, elevated",
-    icon: "🇺🇸",
-    dark: false,
-    searches: [
-      { q: "Classic American Smash Burgers", label: "Smash Burger", emoji: "🍔", region: "USA" },
-      { q: "Southern BBQ Ribs slow cooked", label: "BBQ Ribs", emoji: "🥩", region: "USA" },
-      { q: "New England Clam Chowder", label: "Clam Chowder", emoji: "🍵", region: "New England" },
-      { q: "Southern Fried Chicken crispy", label: "Fried Chicken", emoji: "🍗", region: "South" },
-      { q: "Classic Mac and Cheese homemade", label: "Mac & Cheese", emoji: "🧀", region: "USA" },
-      { q: "New York Style Cheesecake", label: "NY Cheesecake", emoji: "🍰", region: "New York" },
-      { q: "Texas Beef Brisket smoked", label: "Texas Brisket", emoji: "🫕", region: "Texas" },
-      { q: "Classic American Apple Pie", label: "Apple Pie", emoji: "🥧", region: "USA" },
-    ],
-  },
-  {
-    id: "top-british",
-    title: "Top British Dishes",
-    subtitle: "Great British classics worth every bite",
-    icon: "🇬🇧",
-    dark: true,
-    searches: [
-      { q: "British Sunday Roast beef yorkshire pudding", label: "Sunday Roast", emoji: "🥩", region: "England" },
-      { q: "Classic Fish and Chips British", label: "Fish & Chips", emoji: "🐟", region: "England" },
-      { q: "Beef Wellington classic", label: "Beef Wellington", emoji: "🥩", region: "England" },
-      { q: "Traditional British Shepherd's Pie", label: "Shepherd's Pie", emoji: "🫕", region: "England" },
-      { q: "Scottish Haggis traditional", label: "Haggis", emoji: "🏴󠁧󠁢󠁳󠁣󠁴󠁿", region: "Scotland" },
-      { q: "Welsh Rarebit cheese toast", label: "Welsh Rarebit", emoji: "🍞", region: "Wales" },
-      { q: "Classic British Sticky Toffee Pudding", label: "Toffee Pudding", emoji: "🍮", region: "England" },
-      { q: "Full English Breakfast fry up", label: "Full English", emoji: "🍳", region: "England" },
-    ],
-  },
-  {
-    id: "top-european",
-    title: "Top European Dishes",
-    subtitle: "From Paris to Rome, Europe's finest plates",
-    icon: "🇪🇺",
-    dark: false,
-    searches: [
-      { q: "Classic French Coq au Vin", label: "Coq au Vin", emoji: "🍷", region: "France" },
-      { q: "Italian Spaghetti Carbonara authentic", label: "Carbonara", emoji: "🍝", region: "Italy" },
-      { q: "Spanish Paella Valenciana", label: "Paella", emoji: "🥘", region: "Spain" },
-      { q: "German Sauerbraten pot roast", label: "Sauerbraten", emoji: "🥩", region: "Germany" },
-      { q: "Greek Moussaka traditional", label: "Moussaka", emoji: "🫕", region: "Greece" },
-      { q: "Portuguese Bacalhau salt cod", label: "Bacalhau", emoji: "🐟", region: "Portugal" },
-      { q: "Classic French Croissant buttery", label: "Croissant", emoji: "🥐", region: "France" },
-      { q: "Italian Tiramisu classic dessert", label: "Tiramisu", emoji: "🍮", region: "Italy" },
-    ],
-  },
-  {
-    id: "top-asian",
-    title: "Top Asian Dishes",
-    subtitle: "Ancient recipes, extraordinary depth of flavour",
-    icon: "🌏",
-    dark: true,
-    searches: [
-      { q: "Japanese Tonkotsu Ramen authentic", label: "Tonkotsu Ramen", emoji: "🍜", region: "Japan" },
-      { q: "Chinese Peking Duck classic", label: "Peking Duck", emoji: "🦆", region: "China" },
-      { q: "Indian Butter Chicken murgh makhani", label: "Butter Chicken", emoji: "🍗", region: "India" },
-      { q: "Thai Pad Thai authentic street food", label: "Pad Thai", emoji: "🍜", region: "Thailand" },
-      { q: "Korean Beef Bulgogi BBQ", label: "Bulgogi", emoji: "🥩", region: "Korea" },
-      { q: "Vietnamese Pho Bo beef noodle soup", label: "Pho Bo", emoji: "🍲", region: "Vietnam" },
-      { q: "Chinese Dim Sum dumplings", label: "Dim Sum", emoji: "🥟", region: "China" },
-      { q: "Japanese Sushi Rolls homemade", label: "Sushi Rolls", emoji: "🍱", region: "Japan" },
-    ],
-  },
-  {
-    id: "legacy",
-    title: "Legacy Dishes",
-    subtitle: "Timeless recipes passed down through generations",
-    icon: "🏺",
-    dark: false,
-    searches: [
-      { q: "Classic Beef Wellington", label: "Beef Wellington", emoji: "🥩", region: "Classic" },
-      { q: "Traditional Moroccan Tagine", label: "Lamb Tagine", emoji: "🫕", region: "Morocco" },
-      { q: "Classic French Bouillabaisse", label: "Bouillabaisse", emoji: "🍵", region: "France" },
-      { q: "Traditional Jerk Chicken Jamaican", label: "Jerk Chicken", emoji: "🍗", region: "Jamaica" },
-      { q: "Classic Spanish Paella", label: "Paella", emoji: "🥘", region: "Spain" },
-      { q: "Traditional Ethiopian Injera with Doro Wat", label: "Doro Wat", emoji: "🫓", region: "Ethiopia" },
-    ],
-  },
-  {
-    id: "healthy",
-    title: "Healthy & Low Calorie",
-    subtitle: "Under 450 calories, nourishing not boring",
-    icon: "🥗",
-    dark: true,
-    searches: [
-      { q: "Low Calorie High Protein Bowls under 400 calories", label: "Protein Bowls", emoji: "🥣", region: "Healthy" },
-      { q: "Healthy Vegan Buddha Bowl", label: "Buddha Bowl", emoji: "🥗", region: "Vegan" },
-      { q: "Low Calorie Grilled Salmon 350 calories", label: "Grilled Salmon", emoji: "🐟", region: "Healthy" },
-      { q: "Vegan African Groundnut Stew", label: "Groundnut Stew", emoji: "🥜", region: "Vegan" },
-      { q: "Light Mediterranean Salad under 300 calories", label: "Mediterranean Salad", emoji: "🥙", region: "Healthy" },
-      { q: "Low Calorie Smoothie Bowl 250 calories", label: "Smoothie Bowl", emoji: "🍓", region: "Healthy" },
-    ],
-  },
-  {
-    id: "community",
-    title: "Top Community Recipes",
-    subtitle: "Most-cooked dishes loved by our users",
-    icon: "⭐",
-    dark: false,
-    searches: [
-      { q: "Marry Me Chicken Creamy", label: "Marry Me Chicken", emoji: "🍗", region: "Trending" },
-      { q: "Brown Butter Sage Pasta", label: "Brown Butter Pasta", emoji: "🍝", region: "Trending" },
-      { q: "Viral Baked Feta Pasta", label: "Baked Feta Pasta", emoji: "🧀", region: "Trending" },
-      { q: "Japanese Milk Bread Soft", label: "Milk Bread", emoji: "🍞", region: "Trending" },
-      { q: "One Pan Lemon Herb Chicken", label: "Lemon Herb Chicken", emoji: "🍋", region: "Popular" },
-      { q: "Crispy Smashed Potatoes", label: "Smashed Potatoes", emoji: "🥔", region: "Popular" },
-    ],
-  },
-];
-
-const REGIONS = [
-  { label: "West African",   emoji: "", q: "Popular West African Dishes" },
-  { label: "East African",   emoji: "", q: "Popular East African Dishes" },
-  { label: "Italian",        emoji: "", q: "Classic Italian Recipes" },
-  { label: "Asian",          emoji: "", q: "Popular Asian Dishes" },
-  { label: "Mediterranean",  emoji: "", q: "Mediterranean Recipes" },
-  { label: "Latin American", emoji: "", q: "Latin American Recipes" },
-  { label: "British",        emoji: "", q: "Classic British Recipes" },
-  { label: "American",       emoji: "", q: "American Comfort Food" },
-  { label: "Chinese",        emoji: "", q: "Classic Chinese Recipes" },
-  { label: "Indian",         emoji: "", q: "Popular Indian Recipes" },
-  { label: "French",         emoji: "", q: "Classic French Recipes" },
-  { label: "Vegan",          emoji: "", q: "Vegan Recipes from Around the World" },
-  { label: "Low Calorie",    emoji: "", q: "Low Calorie Healthy Meals Under 400 Calories" },
-  { label: "Desserts",       emoji: "", q: "World Famous Desserts" },
-];
 
 /* ─── Helpers ────────────────────────────────────────────── */
 const FREE_LIMIT = 1;
 const getBM = () => JSON.parse(localStorage.getItem("mk_bm") || "[]");
 const saveBM = (b) => localStorage.setItem("mk_bm", JSON.stringify(b));
-
-// In-memory cache: query → recipes (lives for session)
 const recipeCache = new Map();
 
 const callAPI = async (query, isPro = false) => {
-  const cacheKey = `${query}__${isPro}`;
-  if (recipeCache.has(cacheKey)) return recipeCache.get(cacheKey);
+  const key = `${query.toLowerCase()}__${isPro}`;
+  if (recipeCache.has(key)) return recipeCache.get(key);
   const res = await fetch("/api/recipes", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -185,1071 +31,491 @@ const callAPI = async (query, isPro = false) => {
   });
   const data = await res.json();
   const recipes = data.recipes || [];
-  if (recipes.length > 0) recipeCache.set(cacheKey, recipes);
+  if (recipes.length > 0) recipeCache.set(key, recipes);
   return recipes;
 };
 
-/* ─── Global Styles Injection ────────────────────────────── */
+const callFeed = async (preferences, recentSearches, batch, isPro) => {
+  const res = await fetch("/api/feed", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ preferences, recentSearches, batch, isPro }),
+  });
+  return res.json();
+};
+
+/* ─── Global Styles ──────────────────────────────────────── */
 const STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400;1,600&family=Poppins:wght@400;900&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;900&family=Inter:wght@300;400;500;600&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
-  body { background: #F5F5F7; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif; }
+  body { background: #FAFAFA; -webkit-font-smoothing: antialiased; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
   ::-webkit-scrollbar { width: 0; height: 0; }
-  input::placeholder { color: #86868B; }
+  input, button { font-family: inherit; }
 
-  @keyframes fadeUp  { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
-  @keyframes fadeIn  { from { opacity:0; } to { opacity:1; } }
-  @keyframes scaleIn { from { opacity:0; transform:scale(0.94) translateY(6px); } to { opacity:1; transform:scale(1) translateY(0); } }
-  @keyframes pulse   { 0%,100%{opacity:1} 50%{opacity:0.3} }
-  @keyframes float   { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
-  @keyframes shimmer { 0%{background-position:-600px 0} 100%{background-position:600px 0} }
-  @keyframes imgFade { from{opacity:0} to{opacity:1} }
+  @keyframes fadeUp   { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes fadeIn   { from { opacity:0; } to { opacity:1; } }
+  @keyframes scaleIn  { from { opacity:0; transform:scale(0.94); } to { opacity:1; transform:scale(1); } }
+  @keyframes pulse    { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  @keyframes shimmer  { 0%{background-position:-600px 0} 100%{background-position:600px 0} }
+  @keyframes imgFade  { from{opacity:0} to{opacity:1} }
+  @keyframes slideUp  { from{transform:translateY(100%);opacity:0} to{transform:translateY(0);opacity:1} }
 
-  .card-hover { transition: transform 0.2s ease, box-shadow 0.2s ease; cursor: pointer; }
-  .card-hover:hover { transform: translateY(-4px); box-shadow: 0 14px 40px rgba(0,0,0,0.11) !important; }
-
-  .pill-hover { transition: all 0.18s ease; }
-  .pill-hover:hover { background: #CE4F00 !important; color: #fff !important; border-color: #CE4F00 !important; }
-
-  .btn-orange { background:#CE4F00; color:#fff; border:none; cursor:pointer; font-family:'DM Sans',sans-serif; font-weight:500; transition:all 0.18s ease; }
-  .btn-orange:hover { background:#E06612; }
-  .btn-orange:active { transform:scale(0.98); }
-
-  .skeleton { background: linear-gradient(90deg, #E8E8ED 25%, #F2F2F7 50%, #E8E8ED 75%); background-size: 600px 100%; animation: shimmer 1.6s ease infinite; border-radius:10px; }
-  .recipe-img { object-fit:cover; width:100%; height:100%; display:block; }
+  .skeleton { background: linear-gradient(90deg,#F0F0F0 25%,#F8F8F8 50%,#F0F0F0 75%); background-size:600px 100%; animation:shimmer 1.4s ease infinite; }
+  .card-tap { transition: transform 0.15s ease, box-shadow 0.15s ease; cursor: pointer; }
+  .card-tap:active { transform: scale(0.97); }
+  @media (hover: hover) { .card-tap:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,0.10) !important; } }
+  .btn-primary { background: #CE4F00; color: #fff; border: none; cursor: pointer; font-weight: 600; transition: all 0.18s; }
+  .btn-primary:hover { background: #E06612; }
+  .btn-primary:active { transform: scale(0.97); }
+  .filter-chip { background: #fff; border: 1px solid #E8E8E8; border-radius: 20px; padding: 7px 14px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.18s; white-space: nowrap; color: #1A1A1A; }
+  .filter-chip:hover, .filter-chip.active { background: #1A1A1A; color: #fff; border-color: #1A1A1A; }
+  .filter-chip.active { font-weight: 600; }
 `;
 
-/* ─── Logo ───────────────────────────────────────────────── */
-const FLAME_PATH = "M 1124.640625 460.738281 C 1124.640625 460.738281 1018.078125 559.09375 969.816406 679.957031 C 918.5625 808.308594 950.328125 857.421875 926.183594 884.042969 C 898.734375 914.304688 844.542969 889.671875 862.761719 758.234375 C 808.699219 858.609375 767.835938 966.453125 767.835938 1063.144531 C 767.835938 1190.230469 834.292969 1301.777344 934.335938 1364.988281 L 945.617188 1306.457031 C 950.511719 1281.09375 941.480469 1255.21875 922.292969 1237.933594 C 904.976562 1222.304688 895.925781 1202.789062 903.601562 1162.957031 C 917.820312 1089.207031 979.917969 994.976562 1032.183594 1005.050781 C 1084.445312 1015.128906 1107.078125 1125.691406 1092.863281 1199.4375 C 1085.183594 1239.273438 1069.527344 1254.027344 1047.640625 1262.09375 C 1023.402344 1271.003906 1005.382812 1291.664062 1000.496094 1317.042969 L 986.039062 1392.019531 C 1028.652344 1409.996094 1075.484375 1419.945312 1124.640625 1419.945312 C 1172.957031 1419.945312 1219.011719 1410.316406 1261.042969 1392.917969 L 1248.777344 1329.269531 C 1243.921875 1304.09375 1226.257812 1283.21875 1202.152344 1274.511719 C 1180.003906 1266.480469 1164.160156 1251.804688 1156.417969 1211.660156 L 1126.476562 1056.3125 C 1124.257812 1044.824219 1131.761719 1033.730469 1143.246094 1031.519531 C 1148.976562 1030.410156 1154.628906 1031.726562 1159.113281 1034.773438 C 1163.613281 1037.796875 1166.933594 1042.5625 1168.039062 1048.292969 L 1198.503906 1206.335938 L 1227.820312 1200.6875 L 1197.921875 1045.601562 C 1195.398438 1032.492188 1203.96875 1019.8125 1217.085938 1017.285156 C 1223.648438 1016.015625 1230.101562 1017.519531 1235.222656 1020.992188 C 1240.359375 1024.460938 1244.160156 1029.898438 1245.417969 1036.445312 L 1275.3125 1191.527344 L 1304.621094 1185.878906 L 1274.148438 1027.839844 C 1271.9375 1016.355469 1279.453125 1005.257812 1290.9375 1003.042969 C 1296.667969 1001.933594 1302.320312 1003.25 1306.808594 1006.292969 C 1311.304688 1009.332031 1314.628906 1014.089844 1315.730469 1019.828125 L 1345.683594 1175.183594 C 1353.421875 1215.320312 1344.152344 1234.835938 1326.570312 1250.519531 C 1307.449219 1267.570312 1298.792969 1293.511719 1303.648438 1318.683594 L 1312.828125 1366.304688 C 1414.050781 1303.335938 1481.445312 1191.121094 1481.445312 1063.144531 C 1481.445312 809.085938 1169.675781 729.90625 1124.640625 460.738281";
+/* ─── Flame SVG Path ─────────────────────────────────────── */
+const FLAME = "M 1124.640625 460.738281 C 1124.640625 460.738281 1018.078125 559.09375 969.816406 679.957031 C 918.5625 808.308594 950.328125 857.421875 926.183594 884.042969 C 898.734375 914.304688 844.542969 889.671875 862.761719 758.234375 C 808.699219 858.609375 767.835938 966.453125 767.835938 1063.144531 C 767.835938 1190.230469 834.292969 1301.777344 934.335938 1364.988281 L 945.617188 1306.457031 C 950.511719 1281.09375 941.480469 1255.21875 922.292969 1237.933594 C 904.976562 1222.304688 895.925781 1202.789062 903.601562 1162.957031 C 917.820312 1089.207031 979.917969 994.976562 1032.183594 1005.050781 C 1084.445312 1015.128906 1107.078125 1125.691406 1092.863281 1199.4375 C 1085.183594 1239.273438 1069.527344 1254.027344 1047.640625 1262.09375 C 1023.402344 1271.003906 1005.382812 1291.664062 1000.496094 1317.042969 L 986.039062 1392.019531 C 1028.652344 1409.996094 1075.484375 1419.945312 1124.640625 1419.945312 C 1172.957031 1419.945312 1219.011719 1410.316406 1261.042969 1392.917969 L 1248.777344 1329.269531 C 1243.921875 1304.09375 1226.257812 1283.21875 1202.152344 1274.511719 C 1180.003906 1266.480469 1164.160156 1251.804688 1156.417969 1211.660156 L 1126.476562 1056.3125 C 1124.257812 1044.824219 1131.761719 1033.730469 1143.246094 1031.519531 C 1148.976562 1030.410156 1154.628906 1031.726562 1159.113281 1034.773438 C 1163.613281 1037.796875 1166.933594 1042.5625 1168.039062 1048.292969 L 1198.503906 1206.335938 L 1227.820312 1200.6875 L 1197.921875 1045.601562 C 1195.398438 1032.492188 1203.96875 1019.8125 1217.085938 1017.285156 C 1223.648438 1016.015625 1230.101562 1017.519531 1235.222656 1020.992188 C 1240.359375 1024.460938 1244.160156 1029.898438 1245.417969 1036.445312 L 1275.3125 1191.527344 L 1304.621094 1185.878906 L 1274.148438 1027.839844 C 1271.9375 1016.355469 1279.453125 1005.257812 1290.9375 1003.042969 C 1296.667969 1001.933594 1302.320312 1003.25 1306.808594 1006.292969 C 1311.304688 1009.332031 1314.628906 1014.089844 1315.730469 1019.828125 L 1345.683594 1175.183594 C 1353.421875 1215.320312 1344.152344 1234.835938 1326.570312 1250.519531 C 1307.449219 1267.570312 1298.792969 1293.511719 1303.648438 1318.683594 L 1312.828125 1366.304688 C 1414.050781 1303.335938 1481.445312 1191.121094 1481.445312 1063.144531 C 1481.445312 809.085938 1169.675781 729.90625 1124.640625 460.738281";
 
-
-const Logo = ({ height = 44, light = false }) => {
-  const textColor = light ? "#fff" : B.dark;
-  const subColor = light ? "rgba(255,255,255,0.7)" : B.orange;
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
-      <svg
-        width={height * 0.745}
-        height={height}
-        viewBox="767 460 714 960"
-        xmlns="http://www.w3.org/2000/svg"
-        style={{ display: "block", flexShrink: 0, overflow: "visible" }}
-      >
-        <path d={FLAME_PATH} fill={light ? "#fff9e5" : "#ce4f00"} fillRule="nonzero" />
-      </svg>
-      <div style={{ display: "flex", flexDirection: "column" }}>
-        <div style={{
-          fontFamily: "'Poppins', sans-serif",
-          fontWeight: 900,
-          fontSize: height * 0.42,
-          color: textColor,
-          letterSpacing: "0.02em",
-          lineHeight: 1.05,
-          textTransform: "uppercase",
-          whiteSpace: "nowrap",
-        }}>MAMA K</div>
-        {/* RECIPES stretches full width of MAMA K using word-spacing trick */}
-        <div style={{
-          fontFamily: "'Poppins', sans-serif",
-          fontWeight: 400,
-          fontSize: height * 0.175,
-          color: subColor,
-          textTransform: "uppercase",
-          lineHeight: 1,
-          marginTop: "2px",
-          letterSpacing: `${height * 0.042}px`,
-          whiteSpace: "nowrap",
-        }}>RECIPES</div>
-      </div>
+/* ─── Logo Component ─────────────────────────────────────── */
+const Logo = ({ height = 40, light = false }) => (
+  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+    <svg width={height * 0.75} height={height} viewBox="767 460 714 960" xmlns="http://www.w3.org/2000/svg" style={{ display: "block", flexShrink: 0 }}>
+      <path d={FLAME} fill={light ? "#FFF0E0" : B.orange} fillRule="nonzero" />
+    </svg>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <div style={{
+        fontFamily: "'Poppins', sans-serif", fontWeight: 900,
+        fontSize: height * 0.42, color: light ? "#fff" : B.dark,
+        letterSpacing: "0.04em", lineHeight: 1, textTransform: "uppercase",
+        whiteSpace: "nowrap",
+      }}>MAMA K</div>
+      <div style={{
+        fontFamily: "'Poppins', sans-serif", fontWeight: 400,
+        fontSize: height * 0.2, color: light ? "rgba(255,255,255,0.7)" : B.orange,
+        textTransform: "uppercase", letterSpacing: "0.55em",
+        lineHeight: 1, marginTop: "2px",
+        width: "100%", textAlign: "center",
+      }}>RECIPES</div>
     </div>
-  );
-};
-
-
-/* ─── Cuisine thumbnail gradients ────────────────────────── */
-const CUISINE_BG = {
-  nigeria: "linear-gradient(135deg,#3D2010,#5C3018)",
-  ghana: "linear-gradient(135deg,#2A1A08,#4A2A10)",
-  senegal: "linear-gradient(135deg,#1A2A3A,#1A3A2A)",
-  ethiopia: "linear-gradient(135deg,#1A2E1A,#2A4A1A)",
-  "south africa": "linear-gradient(135deg,#1A1A2E,#2E1A1A)",
-  kenya: "linear-gradient(135deg,#0A2E0A,#1A4A1A)",
-  usa: "linear-gradient(135deg,#0A1A2E,#1A2E3A)",
-  italy: "linear-gradient(135deg,#2E1A0A,#3A2A10)",
-  france: "linear-gradient(135deg,#0A0A2E,#1A1A3A)",
-  spain: "linear-gradient(135deg,#2E0A0A,#3A1A10)",
-  japan: "linear-gradient(135deg,#2E0A1A,#3A1A2A)",
-  china: "linear-gradient(135deg,#2E0A0A,#4A1A10)",
-  india: "linear-gradient(135deg,#2E1A0A,#4A2A10)",
-  thailand: "linear-gradient(135deg,#1A2E0A,#2A4A10)",
-  korea: "linear-gradient(135deg,#0A1A2E,#1A2A3A)",
-  vietnam: "linear-gradient(135deg,#1A2E1A,#2A3A10)",
-  morocco: "linear-gradient(135deg,#2E1A0A,#4A2A10)",
-  mexico: "linear-gradient(135deg,#2E1A0A,#4A1A10)",
-  default: "linear-gradient(135deg,#1A1A1A,#2A2A2A)",
-};
-const thumbBg = (region) => CUISINE_BG[(region || "").toLowerCase()] || CUISINE_BG.default;
-const lightThumb = (region) => ["usa","italy","france","spain","japan","china","india","thailand","korea","vietnam","morocco","mexico","new england","south","texas","new york","scotland","wales","england","germany","greece","portugal"].includes((region||"").toLowerCase());
+  </div>
+);
 
 /* ─── Skeleton Card ──────────────────────────────────────── */
-const SkeletonCard = ({ dark = false }) => (
-  <div style={{ width: "166px", flexShrink: 0, borderRadius: "14px", overflow: "hidden", background: dark ? "rgba(255,255,255,0.06)" : B.white, boxShadow: dark ? "none" : "0 1px 4px rgba(0,0,0,0.05)" }}>
-    <div className="skeleton" style={{ height: "96px", borderRadius: 0 }} />
-    <div style={{ padding: "10px 12px 12px" }}>
-      <div className="skeleton" style={{ height: "13px", marginBottom: "6px", width: "75%" }} />
-      <div className="skeleton" style={{ height: "10px", width: "50%" }} />
+const SkeletonCard = ({ tall = false }) => (
+  <div style={{ borderRadius: "16px", overflow: "hidden", background: B.card, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+    <div className="skeleton" style={{ height: tall ? "220px" : "180px" }} />
+    <div style={{ padding: "12px" }}>
+      <div className="skeleton" style={{ height: "14px", borderRadius: "6px", marginBottom: "8px", width: "80%" }} />
+      <div className="skeleton" style={{ height: "11px", borderRadius: "6px", width: "55%" }} />
     </div>
   </div>
 );
 
 /* ─── Recipe Card ────────────────────────────────────────── */
-const DIFF_STYLE = {
-  Easy:     { bg: "#F0FDF4", color: "#15803D" },
-  Medium:   { bg: "#FFFBEB", color: "#D97706" },
-  Advanced: { bg: "#FFF1F2", color: "#BE123C" },
-};
-
-const RecipeCard = ({ r, onOpen, bookmarked, onBM, idx = 0, dark = false, wide = false }) => {
+const RecipeCard = ({ r, onOpen, bookmarked, onBM, tall = false }) => {
   const [imgLoaded, setImgLoaded] = useState(false);
-  const diff = DIFF_STYLE[r.difficulty] || DIFF_STYLE.Easy;
-  const w = wide ? "220px" : "166px";
-  const h = wide ? "120px" : "96px";
+  const h = tall ? "220px" : "180px";
 
   return (
-    <div className="card-hover" onClick={onOpen} style={{
-      width: w, flexShrink: 0, borderRadius: "14px", overflow: "hidden",
-      position: "relative", scrollSnapAlign: "start",
-      background: dark ? "rgba(255,255,255,0.07)" : B.white,
-      border: `0.5px solid ${dark ? "rgba(255,255,255,0.1)" : B.border}`,
-      boxShadow: dark ? "none" : "0 1px 4px rgba(0,0,0,0.05)",
-      animation: "fadeUp 0.4s ease both",
-      animationDelay: `${(idx % 8) * 40}ms`,
+    <div className="card-tap" onClick={onOpen} style={{
+      borderRadius: "16px", overflow: "hidden", background: B.card,
+      boxShadow: "0 1px 6px rgba(0,0,0,0.07), 0 0 0 0.5px rgba(0,0,0,0.04)",
+      position: "relative",
     }}>
-      {/* Thumbnail */}
-      <div style={{ height: h, position: "relative", overflow: "hidden", background: thumbBg(r.region) }}>
+      {/* Image */}
+      <div style={{ height: h, position: "relative", overflow: "hidden", background: "#F0EDE8" }}>
         {r.image ? (
           <>
-            {/* Blur placeholder while loading */}
             <div style={{
               position: "absolute", inset: 0,
               backgroundImage: `url(${r.imageSmall || r.image})`,
               backgroundSize: "cover", backgroundPosition: "center",
-              filter: imgLoaded ? "none" : "blur(12px)",
-              transform: "scale(1.05)",
-              transition: "filter 0.4s ease",
+              filter: imgLoaded ? "none" : "blur(10px)",
+              transform: "scale(1.05)", transition: "filter 0.4s ease",
             }} />
-            <img
-              className="recipe-img"
-              src={r.image}
-              srcSet={r.imageLarge ? `${r.image} 640w, ${r.imageLarge} 1200w` : undefined}
-              sizes="(max-width: 640px) 220px, 280px"
-              alt={r.title}
-              loading="lazy"
-              decoding="async"
+            <img src={r.image} alt={r.title} loading="lazy" decoding="async"
               onLoad={() => setImgLoaded(true)}
               style={{
-                position: "absolute", inset: 0,
-                opacity: imgLoaded ? 1 : 0,
-                transition: "opacity 0.35s ease",
+                position: "absolute", inset: 0, width: "100%", height: "100%",
+                objectFit: "cover", opacity: imgLoaded ? 1 : 0, transition: "opacity 0.35s ease",
               }}
             />
           </>
         ) : (
-          <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: wide ? "42px" : "34px" }}>
+          <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: tall ? "52px" : "44px" }}>
             {r.emoji}
           </div>
         )}
         {/* Gradient overlay */}
-        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "45%", background: "linear-gradient(to top,rgba(0,0,0,0.4),transparent)", pointerEvents: "none" }} />
-        {/* Region tag */}
+        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "60%", background: "linear-gradient(to top,rgba(0,0,0,0.55),transparent)", pointerEvents: "none" }} />
+        {/* Region badge */}
         {r.region && (
           <div style={{
-            position: "absolute", top: "6px", left: "6px",
-            background: "rgba(0,0,0,0.58)", backdropFilter: "blur(6px)",
-            color: "#fff", fontSize: "8px", fontWeight: 500,
-            padding: "2px 7px", borderRadius: "5px", letterSpacing: "0.05em", textTransform: "uppercase",
+            position: "absolute", bottom: "10px", left: "10px",
+            background: "rgba(255,255,255,0.18)", backdropFilter: "blur(8px)",
+            color: "#fff", fontSize: "10px", fontWeight: 600,
+            padding: "3px 8px", borderRadius: "6px", letterSpacing: "0.04em",
           }}>{r.region}</div>
         )}
         {/* Bookmark */}
         <button onClick={e => { e.stopPropagation(); onBM(); }} style={{
-          position: "absolute", top: "6px", right: "6px",
-          background: "rgba(255,255,255,0.88)", backdropFilter: "blur(8px)",
-          border: "none", borderRadius: "50%", width: "24px", height: "24px",
-          cursor: "pointer", fontSize: "11px", color: bookmarked ? B.orange : "#AAA",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          transition: "all 0.18s",
+          position: "absolute", top: "8px", right: "8px",
+          background: "rgba(255,255,255,0.9)", backdropFilter: "blur(8px)",
+          border: "none", borderRadius: "50%", width: "30px", height: "30px",
+          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: "13px", color: bookmarked ? B.orange : "#999",
+          boxShadow: "0 1px 4px rgba(0,0,0,0.12)", transition: "all 0.18s",
         }}>{bookmarked ? "♥" : "♡"}</button>
       </div>
 
-      {/* Body */}
-      <div style={{ padding: "9px 11px 11px" }}>
+      {/* Card body */}
+      <div style={{ padding: "10px 12px 12px" }}>
         <div style={{
-          fontFamily: "Georgia, 'Times New Roman', serif",
-          fontSize: "13px", fontWeight: 400, lineHeight: 1.3,
-          marginBottom: "3px", color: dark ? "#fff" : B.dark,
-          letterSpacing: "-0.01em",
+          fontFamily: "'Poppins', sans-serif", fontWeight: 600,
+          fontSize: "13px", color: B.dark, lineHeight: 1.3,
+          marginBottom: "5px", letterSpacing: "-0.01em",
         }}>{r.title}</div>
-        <div style={{ fontSize: "10px", color: dark ? "rgba(255,255,255,0.42)" : B.muted, lineHeight: 1.4, marginBottom: "8px" }}>
-          {r.tagline}
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-          <span style={{ fontSize: "8px", fontWeight: 600, padding: "2px 7px", borderRadius: "5px", background: diff.bg, color: diff.color, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-            {r.difficulty}
-          </span>
-          <span style={{ marginLeft: "auto", fontSize: "9px", color: dark ? "rgba(255,255,255,0.35)" : B.muted }}>
-            {r.time}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-/* ─── Section Row ────────────────────────────────────────── */
-const GUTTER = "20px";
-
-const SectionRow = ({ section, onSelect, bookmarks, onBM }) => {
-  const [recipes, setRecipes] = useState({});
-  const [loading, setLoading] = useState(false);
-  const [revealed, setRevealed] = useState(false);
-  const [canLeft, setCanLeft] = useState(false);
-  const [canRight, setCanRight] = useState(true);
-  const ref = useRef();
-  const scrollRef = useRef();
-
-  useEffect(() => {
-    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setRevealed(true); }, { threshold: 0.1 });
-    if (ref.current) obs.observe(ref.current);
-    return () => obs.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (!revealed) return;
-    setLoading(true);
-    Promise.all(
-      section.searches.map(s =>
-        callAPI(s.q).then(res => ({ key: s.q, data: res.slice(0, 1), label: s.label, emoji: s.emoji, region: s.region }))
-      )
-    ).then(results => {
-      const map = {};
-      results.forEach(r => { if (r.data[0]) map[r.key] = { ...r.data[0], region: r.region }; });
-      setRecipes(map);
-      setLoading(false);
-    }).catch(() => setLoading(false));
-  }, [revealed]);
-
-  const updateArrows = () => {
-    const el = scrollRef.current;
-    if (!el) return;
-    setCanLeft(el.scrollLeft > 10);
-    setCanRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 10);
-  };
-
-  const scroll = (dir) => {
-    if (!scrollRef.current) return;
-    scrollRef.current.scrollBy({ left: dir * 480, behavior: "smooth" });
-    setTimeout(updateArrows, 400);
-  };
-
-  const cards = section.searches.map(s =>
-    recipes[s.q] || { title: s.label, emoji: s.emoji, region: s.region, _stub: true, _search: s.q, _label: s.label }
-  );
-
-  const arrowStyle = (visible, dark) => ({
-    position: "absolute", top: "50%", transform: "translateY(-50%)",
-    width: "38px", height: "38px", borderRadius: "50%",
-    background: dark ? "rgba(255,255,255,0.12)" : B.white,
-    border: `1px solid ${dark ? "rgba(255,255,255,0.2)" : B.border}`,
-    color: dark ? "#fff" : B.black,
-    backdropFilter: "blur(8px)",
-    display: "flex", alignItems: "center", justifyContent: "center",
-    cursor: "pointer", fontSize: "16px",
-    boxShadow: dark ? "none" : "0 2px 12px rgba(0,0,0,0.1)",
-    opacity: visible ? 1 : 0,
-    pointerEvents: visible ? "auto" : "none",
-    transition: "opacity 0.2s, background 0.2s",
-    zIndex: 10,
-  });
-
-  return (
-    <div ref={ref} style={{ padding: "36px 0 28px", background: section.dark ? B.dark : B.bg }}>
-      <div style={{ padding: `0 ${GUTTER}`, marginBottom: "18px", animation: revealed ? "fadeUp 0.5s ease" : "none" }}>
-        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
-          <div>
-            <div style={{ fontSize: "10px", fontWeight: 600, color: B.orange, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: "5px" }}>
-              {section.subtitle}
-            </div>
-            <div style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: "clamp(20px,3vw,28px)", fontWeight: 400, color: section.dark ? "#fff" : B.dark, lineHeight: 1.1, letterSpacing: "-0.01em" }}>
-              {section.title}
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
-            {[{ dir: -1, active: canLeft }, { dir: 1, active: canRight }].map(({ dir, active }) => (
-              <button key={dir} onClick={() => scroll(dir)} style={{
-                width: "30px", height: "30px", borderRadius: "50%",
-                border: `0.5px solid ${section.dark ? "rgba(255,255,255,0.2)" : B.border}`,
-                background: section.dark ? "rgba(255,255,255,0.07)" : B.white,
-                color: section.dark ? "#fff" : B.dark,
-                cursor: "pointer", fontSize: "13px",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                opacity: active ? 1 : 0.28, transition: "all 0.18s",
-              }}>{dir === -1 ? "←" : "→"}</button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Scroll row */}
-      <div style={{ position: "relative" }}>
-        <div
-          ref={scrollRef}
-          onScroll={updateArrows}
-          style={{
-            display: "flex", gap: "10px", overflowX: "auto", overflowY: "visible",
-            paddingLeft: GUTTER, paddingRight: GUTTER, paddingBottom: "12px", paddingTop: "4px",
-            scrollSnapType: "x mandatory", scrollbarWidth: "none",
-          }}
-        >
-          {loading
-            ? Array(6).fill(0).map((_, i) => <SkeletonCard key={i} dark={section.dark} />)
-            : cards.map((card, i) => (
-              card._stub ? (
-                <div key={i} className="card-hover" onClick={() => onSelect(card._search, card._label)} style={{
-                  width: "166px", flexShrink: 0,
-                  background: section.dark ? "rgba(255,255,255,0.06)" : B.white,
-                  borderRadius: "14px", overflow: "hidden", cursor: "pointer",
-                  border: `0.5px solid ${section.dark ? "rgba(255,255,255,0.1)" : B.border}`,
-                  scrollSnapAlign: "start",
-                  animation: "fadeUp 0.5s ease both", animationDelay: `${i * 50}ms`,
-                }}>
-                  <div style={{ height: "96px", background: thumbBg(card.region), display: "flex", alignItems: "center", justifyContent: "center", fontSize: "34px" }}>
-                    {card.emoji}
-                  </div>
-                  <div style={{ padding: "9px 11px 11px" }}>
-                    <div style={{ fontFamily: "Georgia, serif", fontSize: "13px", color: section.dark ? "#fff" : B.dark, lineHeight: 1.3 }}>{card.title}</div>
-                    <div style={{ fontSize: "10px", color: B.muted, marginTop: "3px" }}>{card.region}</div>
-                  </div>
-                </div>
-              ) : (
-                <RecipeCard
-                  key={i} idx={i} r={card} dark={section.dark}
-                  onOpen={() => onSelect(section.searches[i]?.q, card.title, card)}
-                  bookmarked={bookmarks.some(b => b.title === card.title)}
-                  onBM={() => onBM(card)}
-                />
-              )
-            ))}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-/* ─── Detail View ────────────────────────────────────────── */
-const DetailView = ({ recipe, bookmarked, onBM, onBack }) => {
-  const [tab, setTab] = useState("ingredients");
-  const [imgLoaded, setImgLoaded] = useState(false);
-
-  return (
-    <div style={{ maxWidth: "820px", margin: "0 auto", padding: "40px 28px 100px", animation: "fadeUp 0.35s ease" }}>
-      {/* Back button — Apple style */}
-      <button onClick={onBack} style={{
-        background: "none", border: "none", cursor: "pointer", marginBottom: "28px",
-        fontFamily: "'DM Sans', sans-serif", fontSize: "14px",
-        color: B.orange, fontWeight: 500,
-        display: "inline-flex", alignItems: "center", gap: "4px",
-        padding: 0,
-      }}>‹ Back</button>
-
-      {/* Hero image */}
-      <div style={{
-        height: "320px", borderRadius: "20px", overflow: "hidden",
-        background: `linear-gradient(135deg, ${B.cream}, #E0D4B8)`,
-        marginBottom: "32px", position: "relative",
-        boxShadow: "0 4px 24px rgba(0,0,0,0.08), 0 0 0 0.5px rgba(0,0,0,0.05)",
-      }}>
-        {recipe.image ? (
-          <>
-            {/* Blur placeholder */}
-            <div style={{
-              position: "absolute", inset: 0,
-              backgroundImage: `url(${recipe.imageSmall || recipe.image})`,
-              backgroundSize: "cover", backgroundPosition: "center",
-              filter: imgLoaded ? "none" : "blur(16px)",
-              transform: "scale(1.05)",
-              transition: "filter 0.5s ease",
-            }} />
-            <img
-              src={recipe.imageLarge || recipe.image}
-              alt={recipe.title}
-              loading="eager"
-              decoding="async"
-              fetchpriority="high"
-              onLoad={() => setImgLoaded(true)}
-              style={{
-                position: "absolute", inset: 0,
-                width: "100%", height: "100%", objectFit: "cover",
-                opacity: imgLoaded ? 1 : 0, transition: "opacity 0.4s ease",
-                display: "block",
-              }}
-            />
-            {imgLoaded && recipe.photographer && (
-              <div style={{
-                position: "absolute", bottom: "10px", right: "12px",
-                fontFamily: "'DM Sans', sans-serif", fontSize: "10px",
-                color: "rgba(255,255,255,0.65)",
-              }}>Photo: {recipe.photographer} / Pexels</div>
-            )}
-          </>
-        ) : (
-          <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "96px" }}>
-            {recipe.emoji}
-          </div>
-        )}
-      </div>
-
-      {/* Title row */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "16px", marginBottom: "6px" }}>
-        <h1 style={{
-          fontFamily: "Georgia, 'Times New Roman', serif",
-          fontSize: "clamp(26px,5vw,40px)", fontWeight: 400,
-          color: B.dark, lineHeight: 1.1, letterSpacing: "-0.02em",
-        }}>
-          {recipe.title}
-        </h1>
-        <button onClick={onBM} style={{
-          background: bookmarked ? B.orange : B.bg,
-          border: `0.5px solid ${bookmarked ? B.orange : B.border}`,
-          borderRadius: "50%", width: "40px", height: "40px", flexShrink: 0,
-          cursor: "pointer", fontSize: "16px", color: bookmarked ? "#fff" : B.muted,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          transition: "all 0.18s",
-        }}>{bookmarked ? "♥" : "♡"}</button>
-      </div>
-
-      {/* Region / Cuisine — always visible under title */}
-      {(recipe.region || recipe.cuisine) && (
-        <div style={{
-          display: "flex", alignItems: "center", gap: "6px", marginBottom: "10px",
-        }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <span style={{ fontSize: "10px", color: B.muted, fontWeight: 500 }}>{r.time}</span>
+          <span style={{ width: "3px", height: "3px", borderRadius: "50%", background: B.border, flexShrink: 0 }} />
           <span style={{
-            fontFamily: "'DM Sans', sans-serif", fontSize: "12px",
-            color: B.orange, fontWeight: 600, textTransform: "uppercase",
-            letterSpacing: "0.08em",
-          }}>{recipe.region || recipe.cuisine}</span>
-          {recipe.region && recipe.cuisine && recipe.region !== recipe.cuisine && (
-            <>
-              <span style={{ color: B.border, fontSize: "12px" }}>·</span>
-              <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "12px", color: B.muted }}>{recipe.cuisine}</span>
-            </>
-          )}
+            fontSize: "10px", fontWeight: 600,
+            color: r.difficulty === "Easy" ? "#16A34A" : r.difficulty === "Medium" ? "#D97706" : "#DC2626",
+          }}>{r.difficulty}</span>
         </div>
-      )}
-
-      <p style={{
-        fontFamily: "'DM Sans', sans-serif", fontSize: "14px",
-        color: B.muted, marginBottom: "24px", lineHeight: 1.65,
-      }}>{recipe.tagline}</p>
-
-      {/* Meta strip */}
-      <div style={{
-        display: "grid", gridTemplateColumns: "repeat(4,1fr)",
-        gap: "1px", background: B.border, borderRadius: "12px",
-        overflow: "hidden", marginBottom: "32px",
-        border: `0.5px solid ${B.border}`,
-      }}>
-        {[["Time", recipe.time], ["Serves", recipe.servings], ["Cal", recipe.calories ? `~${recipe.calories}` : "N/A"], ["Level", recipe.difficulty]].map(([l, v], i) => (
-          <div key={l} style={{ background: B.white, padding: "14px 8px", textAlign: "center" }}>
-            <div style={{ fontFamily: "Georgia, serif", fontSize: "17px", fontWeight: 400, color: B.dark, marginBottom: "2px" }}>{v}</div>
-            <div style={{ fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.09em", color: B.muted }}>{l}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Apple-style segmented tabs */}
-      <div style={{
-        display: "flex", gap: "3px",
-        background: B.bg, border: `1px solid ${B.border}`,
-        borderRadius: "10px", padding: "3px", marginBottom: "28px",
-      }}>
-        {["ingredients", "steps"].map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{
-            flex: 1, padding: "9px", border: "none", borderRadius: "8px",
-            background: tab === t ? B.white : "transparent",
-            fontFamily: "'DM Sans', sans-serif", fontSize: "13px", fontWeight: 600,
-            color: tab === t ? B.dark : B.muted, cursor: "pointer", textTransform: "capitalize",
-            boxShadow: tab === t ? "0 1px 3px rgba(0,0,0,0.08), 0 0 0 0.5px rgba(0,0,0,0.05)" : "none",
-            transition: "all 0.15s",
-          }}>{tab === t ? (t === "ingredients" ? "🥕 Ingredients" : "📋 Steps") : t === "ingredients" ? "🥕 Ingredients" : "📋 Steps"}</button>
-        ))}
-      </div>
-
-      {tab === "ingredients" && (recipe.ingredients || []).map((ing, i) => (
-        <div key={i} style={{
-          display: "flex", alignItems: "center", gap: "12px",
-          padding: "12px 0", borderBottom: `1px solid ${B.border}`,
-          fontFamily: "'DM Sans', sans-serif", fontSize: "14px", color: B.dark,
-          animation: "fadeUp 0.3s ease both", animationDelay: `${i * 20}ms`,
-        }}>
-          <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: B.orange, flexShrink: 0 }} />
-          {ing}
-        </div>
-      ))}
-
-      {tab === "steps" && (recipe.steps || []).map((step, i) => (
-        <div key={i} style={{
-          display: "flex", gap: "16px", marginBottom: "24px",
-          animation: "fadeUp 0.3s ease both", animationDelay: `${i * 35}ms`,
-        }}>
-          <div style={{
-            width: "30px", height: "30px", borderRadius: "50%",
-            background: B.orange, color: "#fff", flexShrink: 0,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontFamily: "'DM Sans', sans-serif", fontSize: "12px", fontWeight: 700,
-            boxShadow: `0 3px 10px ${B.orange}33`,
-          }}>{i + 1}</div>
-          <div style={{
-            fontFamily: "'DM Sans', sans-serif", fontSize: "14px",
-            color: "#3A3530", lineHeight: 1.75, paddingTop: "5px",
-          }}>{step}</div>
-        </div>
-      ))}
-
-      {/* ── YOU'LL LOVE THIS ── */}
-      <RecommendationRow recipe={recipe} onOpen={onOpen} bookmarks={[]} onBM={() => {}} />
-    </div>
-  );
-};
-
-/* ─── Recommendation Row ────────────────────────────────── */
-const RecommendationRow = ({ recipe, onOpen, bookmarks, onBM }) => {
-  const [recs, setRecs] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!recipe) return;
-    const q = recipe.region
-      ? `dishes similar to ${recipe.title} from ${recipe.region} cuisine`
-      : `dishes similar to ${recipe.title}`;
-    fetch("/api/recipes", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query: q, isPro: false }),
-    })
-      .then(r => r.json())
-      .then(d => { setRecs((d.recipes || []).filter(r => r.title !== recipe.title).slice(0, 4)); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [recipe?.title]);
-
-  if (loading) return (
-    <div style={{ marginTop: "48px", paddingTop: "32px", borderTop: `0.5px solid ${B.border}` }}>
-      <div style={{ fontFamily: "Georgia, serif", fontSize: "20px", fontWeight: 400, marginBottom: "20px", color: B.dark }}>
-        You'll love these too
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: "12px" }}>
-        {[0,1,2,3].map(i => <div key={i} className="skeleton" style={{ height: "160px", borderRadius: "14px" }} />)}
-      </div>
-    </div>
-  );
-
-  if (recs.length === 0) return null;
-
-  return (
-    <div style={{ marginTop: "48px", paddingTop: "32px", borderTop: `0.5px solid ${B.border}` }}>
-      <div style={{ fontFamily: "Georgia, serif", fontSize: "20px", fontWeight: 400, marginBottom: "4px", color: B.dark }}>
-        You'll love these too
-      </div>
-      <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "12px", color: B.muted, marginBottom: "20px" }}>
-        Based on {recipe.region || recipe.cuisine || "similar style"}
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: "12px" }}>
-        {recs.map((r, i) => (
-          <RecipeCard key={i} idx={i} r={r}
-            onOpen={() => onOpen(r)}
-            bookmarked={bookmarks.some(b => b.title === r.title)}
-            onBM={() => onBM(r)}
-          />
-        ))}
       </div>
     </div>
   );
 };
 
-/* ─── Taste DNA Component ───────────────────────────────── */
-const TasteDNA = ({ preferences }) => {
-  if (!preferences) return null;
+/* ─── Filter Chips ───────────────────────────────────────── */
+const FILTERS = ["All","African","Asian","European","American","Healthy","High Protein","Vegetarian","Quick Meals","Desserts"];
 
-  const regions = preferences.regions || {};
-  const dietary = preferences.dietary || {};
-  const total = Object.values(regions).reduce((a, b) => a + b, 0) + Object.values(dietary).reduce((a, b) => a + b, 0);
-  if (total === 0) return null;
-
-  const items = [
-    ...Object.entries(regions).map(([k, v]) => ({ label: k.replace(/_/g, " "), score: v, type: "region" })),
-    ...Object.entries(dietary).map(([k, v]) => ({ label: k, score: v * 2, type: "dietary" })),
-  ].sort((a, b) => b.score - a.score).slice(0, 5);
-
-  const topTotal = items.reduce((a, b) => a + b.score, 0);
-  const completion = Math.min(100, Math.round((total / 20) * 100));
-
-  return (
-    <div style={{
-      background: B.dark, borderRadius: "20px", padding: "24px",
-      marginBottom: "28px", animation: "fadeUp 0.4s ease",
-    }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px" }}>
-        <div>
-          <div style={{ fontFamily: "Georgia, serif", fontSize: "18px", fontWeight: 400, color: "#fff", marginBottom: "3px" }}>
-            Your Taste DNA
-          </div>
-          <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "11px", color: "rgba(255,255,255,0.45)" }}>
-            Based on your searches and bookmarks
-          </div>
-        </div>
-        <div style={{
-          background: `${B.orange}22`, border: `1px solid ${B.orange}44`,
-          borderRadius: "20px", padding: "4px 12px",
-          fontFamily: "'DM Sans', sans-serif", fontSize: "11px",
-          color: B.orange, fontWeight: 700,
-        }}>{completion}% built</div>
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-        {items.map((item, i) => {
-          const pct = Math.round((item.score / topTotal) * 100);
-          return (
-            <div key={i} style={{ animation: "fadeUp 0.3s ease both", animationDelay: `${i * 60}ms` }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "5px" }}>
-                <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.8)", textTransform: "capitalize", fontWeight: 500 }}>
-                  {item.label}
-                </span>
-                <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "11px", color: B.orange, fontWeight: 700 }}>{pct}%</span>
-              </div>
-              <div style={{ height: "4px", background: "rgba(255,255,255,0.1)", borderRadius: "2px", overflow: "hidden" }}>
-                <div style={{
-                  height: "100%", borderRadius: "2px",
-                  background: `linear-gradient(to right, ${B.orange}, ${B.orangeHover})`,
-                  width: `${pct}%`, transition: "width 0.8s ease",
-                }} />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
-const ResultsView = ({ query, label, preloaded, onOpen, bookmarks, onBM, onSearch, isPro, onUpgrade }) => {
-  const [recipes, setRecipes] = useState(preloaded || []);
-  const [loading, setLoading] = useState(!preloaded?.length);
-  const [input, setInput] = useState(query);
-
-  useEffect(() => {
-    if (preloaded?.length) return;
-    setLoading(true);
-    callAPI(query, isPro).then(r => { setRecipes(r); setLoading(false); });
-  }, [query]);
-
-  return (
-    <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "28px 20px" }}>
-      {/* Search bar */}
-      <div style={{
-        background: B.white, borderRadius: "14px", border: `0.5px solid ${B.border}`,
-        display: "flex", alignItems: "center", marginBottom: "28px",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-      }}>
-        <span style={{ padding: "0 12px 0 16px", fontSize: "15px", opacity: 0.35 }}>🔍</span>
-        <input value={input} onChange={e => setInput(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && onSearch(input, input)}
-          style={{ flex: 1, border: "none", outline: "none", padding: "14px 0", fontFamily: "'DM Sans', sans-serif", fontSize: "14px", background: "transparent" }}
-        />
-        <button className="btn-orange" onClick={() => onSearch(input, input)}
-          style={{ margin: "5px", borderRadius: "10px", padding: "9px 18px", fontSize: "12px", fontWeight: 600 }}>
-          Search
-        </button>
-      </div>
-
-      {loading ? (
-        <div style={{ textAlign: "center", padding: "100px 0" }}>
-          <div style={{ fontSize: "48px", display: "inline-block", animation: "float 1.5s ease infinite", marginBottom: "18px" }}>🔥</div>
-          <div style={{ fontFamily: "Georgia, serif", fontSize: "22px", color: B.muted }}>Finding your recipes...</div>
-        </div>
-      ) : (
-        <>
-          <div style={{ fontFamily: "Georgia, serif", fontSize: "28px", fontWeight: 400, marginBottom: "3px", letterSpacing: "-0.01em" }}>
-            {label || query}
-          </div>
-          <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "12px", color: B.muted, marginBottom: "20px" }}>
-            {recipes.length} recipes {isPro ? "generated" : "shown — upgrade for 12"}
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "14px", marginBottom: "20px" }}>
-            {recipes.map((r, i) => (
-              <RecipeCard key={i} idx={i} r={r} wide
-                onOpen={() => onOpen(r)}
-                bookmarked={bookmarks.some(b => b.title === r.title)}
-                onBM={() => onBM(r)}
-              />
-            ))}
-          </div>
-
-          {/* Unlock banner — only for free users */}
-          {!isPro && (
-            <div onClick={onUpgrade} style={{
-              background: B.dark, borderRadius: "16px",
-              padding: "20px 24px", cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-              gap: "16px", marginTop: "8px",
-              transition: "opacity 0.2s",
-            }}
-              onMouseEnter={e => e.currentTarget.style.opacity = "0.92"}
-              onMouseLeave={e => e.currentTarget.style.opacity = "1"}
-            >
-              <div>
-                <div style={{
-                  fontFamily: "Georgia, serif", fontSize: "18px",
-                  color: "#fff", marginBottom: "4px",
-                }}>
-                  Unlock 12 recipes at once
-                </div>
-                <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.5)" }}>
-                  Upgrade to Pro for full results every search
-                </div>
-              </div>
-              <div style={{
-                background: B.orange, color: "#fff", borderRadius: "10px",
-                padding: "10px 18px", fontFamily: "'DM Sans', sans-serif",
-                fontSize: "13px", fontWeight: 600, flexShrink: 0,
-                whiteSpace: "nowrap",
-              }}>
-                Get Pro
-              </div>
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-};
-
-/* ─── Paywall ────────────────────────────────────────────── */
-const Paywall = ({ user, onSignIn, onDismiss, onUpgrade, onLoading }) => (
+const FilterBar = ({ active, onChange }) => (
   <div style={{
-    position: "fixed", inset: 0, background: "rgba(10,10,10,0.75)",
-    backdropFilter: "blur(18px)", zIndex: 999,
-    display: "flex", alignItems: "center", justifyContent: "center", padding: "24px",
+    display: "flex", gap: "8px", overflowX: "auto", scrollbarWidth: "none",
+    padding: "12px 16px", background: B.white,
+    borderBottom: `1px solid ${B.border}`,
+    position: "sticky", top: "52px", zIndex: 70,
+  }}>
+    {FILTERS.map(f => (
+      <button key={f} onClick={() => onChange(f)}
+        className={`filter-chip${active === f ? " active" : ""}`}
+      >{f}</button>
+    ))}
+  </div>
+);
+
+/* ─── Paywall Modal ──────────────────────────────────────── */
+const Paywall = ({ user, onSignIn, onDismiss, onUpgrade, loading }) => (
+  <div style={{
+    position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)",
+    backdropFilter: "blur(12px)", zIndex: 999,
+    display: "flex", alignItems: "flex-end", justifyContent: "center",
+    padding: "0",
   }}>
     <div style={{
-      background: B.white, borderRadius: "28px", padding: "48px 40px",
-      maxWidth: "420px", width: "100%", textAlign: "center",
-      animation: "scaleIn 0.3s cubic-bezier(0.34,1.4,0.64,1)",
+      background: B.white, borderRadius: "24px 24px 0 0", padding: "32px 24px 40px",
+      width: "100%", maxWidth: "520px",
+      animation: "slideUp 0.3s ease",
     }}>
-      <div style={{ marginBottom: "20px" }}><Logo height={40} /></div>
-      <div style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: "28px", fontWeight: 400, lineHeight: 1.2, marginBottom: "10px" }}>
-        {user ? "Upgrade to Pro" : "Sign in to start cooking"}
+      <div style={{ width: "36px", height: "4px", background: B.border, borderRadius: "2px", margin: "0 auto 24px" }} />
+      <div style={{ textAlign: "center", marginBottom: "8px" }}>
+        <Logo height={36} />
       </div>
-      <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "14px", color: B.muted, lineHeight: 1.7, marginBottom: "24px" }}>
-        {user ? "You have used your free generation for today. Upgrade to Pro for unlimited recipes." : "Create a free account to get 1 recipe generation daily. Upgrade anytime for unlimited access."}
-      </p>
+      <div style={{ fontFamily: "'Poppins', sans-serif", fontSize: "22px", fontWeight: 700, color: B.dark, textAlign: "center", marginBottom: "8px", marginTop: "16px" }}>
+        {user ? "You've used your free search" : "Sign in to start discovering"}
+      </div>
+      <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "14px", color: B.muted, textAlign: "center", lineHeight: 1.6, marginBottom: "28px" }}>
+        {user ? "Upgrade to Pro for unlimited searches and 6 recipes per search." : "Create a free account to get 1 search daily."}
+      </div>
 
-      {["1 free generation daily", "6 recipes per search with Pro", "Save collections to your account", "Top regional and legacy recipes"].map(p => (
-        <div key={p} style={{ display: "flex", gap: "10px", textAlign: "left", marginBottom: "10px", fontFamily: "'DM Sans', sans-serif", fontSize: "13px", color: "#3A3530" }}>
-          <span style={{ color: B.orange, fontWeight: 700 }}>✓</span> {p}
+      {["1 free AI search daily", "6 recipes per search with Pro", "Personalized feed that learns your taste", "Saved collections synced across devices"].map(p => (
+        <div key={p} style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
+          <div style={{ width: "18px", height: "18px", borderRadius: "50%", background: "#F0FDF4", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <span style={{ color: "#16A34A", fontSize: "11px", fontWeight: 700 }}>✓</span>
+          </div>
+          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.dark }}>{p}</span>
         </div>
       ))}
 
-      {!user && (
-        <button onClick={onSignIn} style={{
-          width: "100%", marginTop: "24px", padding: "15px",
-          background: B.black, color: "#fff", border: "none", borderRadius: "14px",
-          fontFamily: "'DM Sans', sans-serif", fontSize: "15px", fontWeight: 700, cursor: "pointer",
+      {!user ? (
+        <button onClick={onSignIn} className="btn-primary" style={{
+          width: "100%", marginTop: "20px", padding: "15px",
+          borderRadius: "14px", fontSize: "15px",
           display: "flex", alignItems: "center", justifyContent: "center", gap: "10px",
-          transition: "all 0.2s",
-        }}
-          onMouseEnter={e => e.currentTarget.style.background = "#2A2A2A"}
-          onMouseLeave={e => e.currentTarget.style.background = B.black}
-        >
+        }}>
           <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
           Continue with Google
         </button>
-      )}
-
-      {user && (
-        <button onClick={onUpgrade} className="btn-orange" style={{
-          width: "100%", marginTop: "24px", padding: "15px", borderRadius: "14px",
-          fontSize: "15px", fontWeight: 700, boxShadow: `0 8px 28px ${B.orange}44`,
-          display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
+      ) : (
+        <button onClick={onUpgrade} className="btn-primary" style={{
+          width: "100%", marginTop: "20px", padding: "15px",
+          borderRadius: "14px", fontSize: "15px", fontWeight: 600,
         }}>
-          {onLoading ? "Redirecting..." : "Upgrade to Pro at $4.99 per month"}
+          {loading ? "Redirecting..." : "Upgrade to Pro — $4.99/month"}
         </button>
       )}
-
       <button onClick={onDismiss} style={{
         width: "100%", marginTop: "10px", padding: "12px",
-        background: "none", color: B.muted, border: "none",
-        fontFamily: "'DM Sans', sans-serif", fontSize: "13px", cursor: "pointer",
-      }}>Not now</button>
+        background: "none", border: "none", cursor: "pointer",
+        fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.muted,
+      }}>Maybe later</button>
     </div>
   </div>
 );
 
-/* ─── Trending data store (shared across app) ───────────── */
-const trendingCache = { data: null, time: 0 };
-const getTrending = async () => {
-  if (trendingCache.data && Date.now() - trendingCache.time < 1000 * 60 * 10) return trendingCache.data;
-  try {
-    const res = await fetch("/api/feed", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ preferences: null, recentSearches: [], batch: 99, isPro: true, mode: "trending" }),
-    });
-    const d = await res.json();
-    trendingCache.data = d.recipes || [];
-    trendingCache.time = Date.now();
-    return trendingCache.data;
-  } catch { return []; }
+/* ─── Detail View ────────────────────────────────────────── */
+const DetailView = ({ recipe, bookmarked, onBM, onBack, onOpen }) => {
+  const [tab, setTab] = useState("ingredients");
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [recs, setRecs] = useState([]);
+  const [liked, setLiked] = useState(false);
+
+  useEffect(() => {
+    const q = recipe.region ? `${recipe.region} cuisine similar to ${recipe.title}` : `similar to ${recipe.title}`;
+    callAPI(q, false).then(r => setRecs(r.filter(x => x.title !== recipe.title).slice(0, 4)));
+  }, [recipe.title]);
+
+  return (
+    <div style={{ background: B.white, minHeight: "100vh", paddingBottom: "100px" }}>
+      {/* Back button */}
+      <div style={{ padding: "12px 16px", position: "sticky", top: 0, background: "rgba(255,255,255,0.92)", backdropFilter: "blur(12px)", zIndex: 80, borderBottom: `1px solid ${B.border}` }}>
+        <button onClick={onBack} style={{
+          background: "none", border: "none", cursor: "pointer",
+          display: "flex", alignItems: "center", gap: "6px",
+          fontFamily: "'Inter', sans-serif", fontSize: "14px",
+          color: B.orange, fontWeight: 500, padding: 0,
+        }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          Back
+        </button>
+      </div>
+
+      {/* Hero image */}
+      <div style={{ height: "280px", position: "relative", overflow: "hidden", background: "#F0EDE8" }}>
+        {recipe.image ? (
+          <>
+            <div style={{ position: "absolute", inset: 0, backgroundImage: `url(${recipe.imageSmall || recipe.image})`, backgroundSize: "cover", backgroundPosition: "center", filter: imgLoaded ? "none" : "blur(12px)", transform: "scale(1.05)", transition: "filter 0.5s ease" }} />
+            <img src={recipe.imageLarge || recipe.image} alt={recipe.title} loading="eager" onLoad={() => setImgLoaded(true)}
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: imgLoaded ? 1 : 0, transition: "opacity 0.4s ease" }}
+            />
+          </>
+        ) : (
+          <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "80px" }}>{recipe.emoji}</div>
+        )}
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 50%)" }} />
+        {recipe.photographer && imgLoaded && (
+          <div style={{ position: "absolute", bottom: "10px", right: "12px", fontSize: "9px", color: "rgba(255,255,255,0.55)", fontFamily: "'Inter', sans-serif" }}>
+            Photo: {recipe.photographer} / Pexels
+          </div>
+        )}
+      </div>
+
+      <div style={{ padding: "20px 16px 0" }}>
+        {/* Title + actions */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px", marginBottom: "6px" }}>
+          <h1 style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "22px", color: B.dark, lineHeight: 1.2, letterSpacing: "-0.02em" }}>
+            {recipe.title}
+          </h1>
+          <div style={{ display: "flex", gap: "8px", flexShrink: 0, marginTop: "2px" }}>
+            <button onClick={() => setLiked(!liked)} style={{
+              background: liked ? "#FEF2F2" : B.bg, border: `1px solid ${liked ? "#FECACA" : B.border}`,
+              borderRadius: "50%", width: "38px", height: "38px", cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: "16px", color: liked ? "#DC2626" : B.muted, transition: "all 0.18s",
+            }}>{liked ? "♥" : "♡"}</button>
+            <button onClick={onBM} style={{
+              background: bookmarked ? "#FFF7ED" : B.bg, border: `1px solid ${bookmarked ? "#FED7AA" : B.border}`,
+              borderRadius: "50%", width: "38px", height: "38px", cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: "15px", color: bookmarked ? B.orange : B.muted, transition: "all 0.18s",
+            }}>🔖</button>
+          </div>
+        </div>
+
+        {/* Region + cuisine */}
+        {(recipe.region || recipe.cuisine) && (
+          <div style={{ marginBottom: "12px" }}>
+            <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", fontWeight: 600, color: B.orange }}>
+              {recipe.region || recipe.cuisine}
+            </span>
+            {recipe.region && recipe.cuisine && recipe.region !== recipe.cuisine && (
+              <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.muted }}> · {recipe.cuisine}</span>
+            )}
+          </div>
+        )}
+
+        {recipe.tagline && (
+          <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.muted, lineHeight: 1.6, marginBottom: "20px" }}>
+            {recipe.tagline}
+          </p>
+        )}
+
+        {/* Meta strip */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "8px", marginBottom: "24px" }}>
+          {[["⏱", recipe.time, "Time"], ["👥", recipe.servings, "Serves"], ["🔥", recipe.calories ? `~${recipe.calories}` : "N/A", "Cal"], ["📊", recipe.difficulty, "Level"]].map(([icon, val, label]) => (
+            <div key={label} style={{ background: B.bg, borderRadius: "12px", padding: "10px 6px", textAlign: "center" }}>
+              <div style={{ fontSize: "16px", marginBottom: "3px" }}>{icon}</div>
+              <div style={{ fontFamily: "'Poppins', sans-serif", fontSize: "12px", fontWeight: 600, color: B.dark }}>{val}</div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", color: B.muted, marginTop: "1px" }}>{label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display: "flex", background: B.bg, borderRadius: "12px", padding: "3px", marginBottom: "20px" }}>
+          {["ingredients", "steps"].map(t => (
+            <button key={t} onClick={() => setTab(t)} style={{
+              flex: 1, padding: "9px", border: "none", borderRadius: "10px",
+              background: tab === t ? B.white : "transparent",
+              fontFamily: "'Inter', sans-serif", fontSize: "13px", fontWeight: tab === t ? 600 : 400,
+              color: tab === t ? B.dark : B.muted, cursor: "pointer",
+              boxShadow: tab === t ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
+              textTransform: "capitalize", transition: "all 0.15s",
+            }}>{t === "ingredients" ? "Ingredients" : "Instructions"}</button>
+          ))}
+        </div>
+
+        {tab === "ingredients" && (
+          <div>
+            {(recipe.ingredients || []).map((ing, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px 0", borderBottom: `1px solid ${B.border}`, animation: "fadeUp 0.3s ease both", animationDelay: `${i * 20}ms` }}>
+                <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: B.orange, flexShrink: 0 }} />
+                <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "14px", color: B.dark }}>{ing}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {tab === "steps" && (
+          <div>
+            {(recipe.steps || []).map((step, i) => (
+              <div key={i} style={{ display: "flex", gap: "14px", marginBottom: "20px", animation: "fadeUp 0.3s ease both", animationDelay: `${i * 30}ms` }}>
+                <div style={{ width: "28px", height: "28px", borderRadius: "50%", background: B.orange, color: "#fff", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Poppins', sans-serif", fontSize: "12px", fontWeight: 700, boxShadow: `0 2px 8px ${B.orange}33` }}>{i + 1}</div>
+                <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "14px", color: "#333", lineHeight: 1.75, paddingTop: "4px" }}>{step}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* More like this */}
+        {recs.length > 0 && (
+          <div style={{ marginTop: "36px", paddingTop: "24px", borderTop: `1px solid ${B.border}` }}>
+            <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "17px", color: B.dark, marginBottom: "4px" }}>More Like This</div>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted, marginBottom: "16px" }}>Based on {recipe.region || recipe.cuisine || "similar style"}</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+              {recs.map((r, i) => (
+                <RecipeCard key={i} r={r} onOpen={() => onOpen(r)} bookmarked={false} onBM={() => {}} />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 };
 
-/* ─── Infinite Feed Component ────────────────────────────── */
-const BATCH_LIMIT_FREE = 5;
-
-const InfiniteFeed = ({ user, preferences, recentSearches, isPro, bookmarks, onBM, onOpen, onUpgrade }) => {
+/* ─── Home Feed ──────────────────────────────────────────── */
+const HomeFeed = ({ user, isPro, preferences, recentSearches, bookmarks, onBM, onOpen, onUpgrade, activeFilter }) => {
   const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useState(false);
   const [batch, setBatch] = useState(0);
   const [done, setDone] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
-  const [trendingRecipes, setTrendingRecipes] = useState([]);
   const loaderRef = useRef(null);
-  const dwellTimers = useRef({});
   const loadingRef = useRef(false);
+  const dwellTimers = useRef({});
 
-  // Calculate Taste DNA completion for paywall trigger
-  const dnaCompletion = (() => {
-    if (!preferences) return 0;
-    const regions = Object.keys(preferences.regions || {}).length;
-    const dietary = Object.keys(preferences.dietary || {}).length;
-    const difficulty = Object.keys(preferences.difficulty || {}).length;
-    return Math.min(100, Math.round(((regions * 15) + (dietary * 10) + (difficulty * 5)) / 1));
-  })();
-
-  // Load trending for "Trending Now" section
-  useEffect(() => {
-    getTrending().then(setTrendingRecipes);
-  }, []);
-
-  const loadNextBatch = useCallback(async () => {
+  const loadNext = useCallback(async () => {
     if (loadingRef.current || done) return;
     loadingRef.current = true;
     setLoading(true);
     try {
-      const res = await fetch("/api/feed", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ preferences, recentSearches, batch, isPro, uid: user?.uid }),
-      });
-      const data = await res.json();
-
-      if (data.done) {
-        setDone(true);
-        if (!isPro) setShowUpgrade(true);
-      } else if (data.recipes?.length > 0) {
-        setBatches(prev => [...prev, { recipes: data.recipes, query: data.query, id: batch }]);
-        setBatch(prev => prev + 1);
-
-        // Trigger DNA paywall for free users who've built decent profile
-        if (!isPro && batch >= BATCH_LIMIT_FREE - 1 && dnaCompletion > 40) {
-          setDone(true);
-          setShowUpgrade(true);
-        }
+      const data = await callFeed(preferences, recentSearches, batch, isPro);
+      if (data.done) { setDone(true); if (!isPro) setShowUpgrade(true); }
+      else if (data.recipes?.length > 0) {
+        setBatches(prev => [...prev, { id: batch, recipes: data.recipes, query: data.query }]);
+        setBatch(b => b + 1);
+        if (!isPro && batch >= 4) { setDone(true); setShowUpgrade(true); }
       }
     } catch {}
     loadingRef.current = false;
     setLoading(false);
-  }, [batch, done, preferences, recentSearches, isPro, dnaCompletion]);
+  }, [batch, done, preferences, recentSearches, isPro]);
 
-  useEffect(() => { loadNextBatch(); }, []);
+  useEffect(() => { setBatches([]); setBatch(0); setDone(false); setShowUpgrade(false); }, [activeFilter]);
+  useEffect(() => { if (batches.length === 0) loadNext(); }, []);
 
-  // Intersection observer with 600px preload margin
   useEffect(() => {
     if (!loaderRef.current) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) loadNextBatch(); },
-      { threshold: 0, rootMargin: "600px" }
-    );
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) loadNext(); }, { rootMargin: "800px" });
     obs.observe(loaderRef.current);
     return () => obs.disconnect();
-  }, [loadNextBatch]);
+  }, [loadNext]);
 
-  // Dwell tracking
-  const startDwell = (title, recipe) => {
+  const startDwell = (title, r) => {
     if (dwellTimers.current[title]) return;
-    dwellTimers.current[title] = setTimeout(() => {
-      if (user?.uid) trackEngagement(user.uid, { type: "dwell", recipe, dwellSeconds: 8 });
-    }, 8000);
+    dwellTimers.current[title] = setTimeout(() => { if (user?.uid) trackEngagement(user.uid, { type: "dwell", recipe: r, dwellSeconds: 8 }); }, 8000);
   };
-  const clearDwell = (title) => {
-    clearTimeout(dwellTimers.current[title]);
-    delete dwellTimers.current[title];
-  };
+  const clearDwell = t => { clearTimeout(dwellTimers.current[t]); delete dwellTimers.current[t]; };
 
-  if (batches.length === 0 && loading) {
+  const allRecipes = batches.flatMap(b => b.recipes);
+
+  if (allRecipes.length === 0 && loading) {
     return (
-      <div style={{ padding: "80px 20px", textAlign: "center" }}>
-        <div style={{ fontSize: "36px", marginBottom: "16px", animation: "float 1.5s ease infinite", display: "inline-block" }}>🔥</div>
-        <div style={{ fontFamily: "Georgia, serif", fontSize: "18px", color: B.muted }}>
-          Building your personalised feed...
-        </div>
+      <div style={{ padding: "16px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+        {Array(6).fill(0).map((_, i) => <SkeletonCard key={i} />)}
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 0 60px" }}>
-
-      {/* ── TRENDING NOW row ── shows above personalized feed */}
-      {trendingRecipes.length > 0 && (
-        <div style={{ padding: "24px 0 0" }}>
-          <div style={{ padding: "0 20px 14px", display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
-            <div>
-              <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "10px", fontWeight: 700, color: B.orange, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: "3px" }}>
-                Right Now
-              </div>
-              <div style={{ fontFamily: "Georgia, serif", fontSize: "20px", fontWeight: 400, color: B.dark }}>
-                Trending
-              </div>
-            </div>
+    <div style={{ padding: "16px 16px 80px" }}>
+      {/* Pinterest-style masonry grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+        {allRecipes.map((r, i) => (
+          <div key={`${r.title}-${i}`} style={{ animation: "fadeUp 0.4s ease both", animationDelay: `${(i % 6) * 40}ms` }}
+            onMouseEnter={() => startDwell(r.title, r)} onMouseLeave={() => clearDwell(r.title)}
+          >
+            <RecipeCard
+              r={r}
+              tall={i % 5 === 0}
+              onOpen={() => { clearDwell(r.title); if (user?.uid) trackEngagement(user.uid, { type: "open", recipe: r }); onOpen(r); }}
+              bookmarked={bookmarks.some(b => b.title === r.title)}
+              onBM={() => onBM(r)}
+            />
           </div>
-          <div style={{
-            display: "flex", gap: "12px", overflowX: "auto",
-            paddingLeft: "20px", paddingRight: "20px", paddingBottom: "4px",
-            scrollbarWidth: "none",
-          }}>
-            {trendingRecipes.slice(0, 8).map((r, i) => (
-              <div key={i} style={{ flexShrink: 0, width: "160px" }}
-                onMouseEnter={() => startDwell(r.title, r)}
-                onMouseLeave={() => clearDwell(r.title)}
-              >
-                <RecipeCard r={r} idx={i}
-                  onOpen={() => { clearDwell(r.title); if (user?.uid) trackEngagement(user.uid, { type: "open", recipe: r }); onOpen(r); }}
-                  bookmarked={bookmarks.some(b => b.title === r.title)}
-                  onBM={() => onBM(r)}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── PERSONALIZED BATCHES ── */}
-      {batches.map((b, bIdx) => (
-        <div key={b.id} style={{ padding: "20px 0 0" }}>
-          {/* Section label */}
-          <div style={{ padding: "0 20px 12px", display: "flex", alignItems: "center", gap: "10px" }}>
-            <div style={{ flex: 1, height: "0.5px", background: B.border }} />
-            <span style={{
-              fontFamily: "'DM Sans', sans-serif", fontSize: "10px",
-              color: B.muted, fontWeight: 600, letterSpacing: "0.12em",
-              textTransform: "uppercase", whiteSpace: "nowrap",
-            }}>{b.query}</span>
-            <div style={{ flex: 1, height: "0.5px", background: B.border }} />
-          </div>
-
-          {/* Netflix-standard card grid — proper gap, no overlap */}
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))",
-            gap: "16px",
-            padding: "0 20px",
-          }}>
-            {b.recipes.map((r, i) => (
-              <div key={i}
-                onMouseEnter={() => startDwell(r.title, r)}
-                onMouseLeave={() => clearDwell(r.title)}
-              >
-                <RecipeCard r={r} idx={i}
-                  onOpen={() => { clearDwell(r.title); if (user?.uid) trackEngagement(user.uid, { type: "open", recipe: r }); onOpen(r); }}
-                  bookmarked={bookmarks.some(bm => bm.title === r.title)}
-                  onBM={() => onBM(r)}
-                  wide
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
 
       {/* Sentinel */}
       <div ref={loaderRef} style={{ height: "1px" }} />
 
       {/* Loading dots */}
       {loading && (
-        <div style={{ padding: "36px 20px", textAlign: "center" }}>
-          <div style={{ display: "flex", gap: "6px", justifyContent: "center" }}>
-            {[0, 1, 2].map(i => (
-              <div key={i} style={{
-                width: "6px", height: "6px", borderRadius: "50%", background: B.orange,
-                animation: "pulse 1.2s ease infinite", animationDelay: `${i * 0.2}s`,
-              }} />
-            ))}
-          </div>
+        <div style={{ padding: "28px", textAlign: "center", display: "flex", gap: "6px", justifyContent: "center" }}>
+          {[0,1,2].map(i => <div key={i} style={{ width: "6px", height: "6px", borderRadius: "50%", background: B.orange, animation: "pulse 1.2s ease infinite", animationDelay: `${i*0.2}s` }} />)}
         </div>
       )}
 
-      {/* ── DNA-BASED UPGRADE PROMPT ── */}
+      {/* Upgrade prompt */}
       {showUpgrade && (
-        <div style={{ padding: "8px 20px 20px" }}>
-          <div onClick={onUpgrade} style={{
-            background: B.dark, borderRadius: "20px", padding: "28px 24px",
-            cursor: "pointer", transition: "opacity 0.2s",
-            border: `1px solid ${B.orange}33`,
-          }}
-            onMouseEnter={e => e.currentTarget.style.opacity = "0.92"}
-            onMouseLeave={e => e.currentTarget.style.opacity = "1"}
-          >
-            {/* DNA completion bar */}
-            <div style={{ marginBottom: "20px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-                <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "11px", color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.1em" }}>
-                  Your Taste Profile
-                </span>
-                <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "11px", color: B.orange, fontWeight: 700 }}>
-                  {Math.min(dnaCompletion, 87)}% built
-                </span>
-              </div>
-              <div style={{ height: "3px", background: "rgba(255,255,255,0.1)", borderRadius: "2px" }}>
-                <div style={{
-                  height: "100%", borderRadius: "2px",
-                  background: `linear-gradient(to right, ${B.orange}, ${B.orangeHover})`,
-                  width: `${Math.min(dnaCompletion, 87)}%`, transition: "width 1s ease",
-                }} />
-              </div>
-            </div>
-
-            <div style={{ fontFamily: "Georgia, serif", fontSize: "22px", color: "#fff", marginBottom: "8px", lineHeight: 1.2 }}>
-              See the remaining {100 - Math.min(dnaCompletion, 87)}% of your personalised matches
-            </div>
-            <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.45)", marginBottom: "20px" }}>
-              Your taste profile is almost complete. Unlock unlimited personalised discovery with Pro.
-            </div>
-            <div style={{
-              display: "inline-flex", alignItems: "center", gap: "8px",
-              background: B.orange, color: "#fff", borderRadius: "12px",
-              padding: "12px 24px", fontFamily: "'DM Sans', sans-serif",
-              fontSize: "14px", fontWeight: 600,
-              boxShadow: `0 4px 20px ${B.orange}44`,
-            }}>
-              Unlock Pro — $4.99/month
-            </div>
+        <div onClick={onUpgrade} style={{
+          background: B.dark, borderRadius: "20px", padding: "24px 20px",
+          cursor: "pointer", marginTop: "8px", transition: "opacity 0.2s",
+        }}
+          onMouseEnter={e => e.currentTarget.style.opacity = "0.92"}
+          onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+        >
+          <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "18px", color: "#fff", marginBottom: "8px", lineHeight: 1.2 }}>
+            Your feed goes deeper with Pro
           </div>
-        </div>
-      )}
-
-      {done && !showUpgrade && (
-        <div style={{ padding: "32px 20px", textAlign: "center" }}>
-          <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "13px", color: B.muted }}>
-            Come back tomorrow for a fresh personalised feed.
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.5)", marginBottom: "16px" }}>
+            Unlock unlimited personalised food discovery
+          </div>
+          <div style={{ display: "inline-block", background: B.orange, color: "#fff", borderRadius: "10px", padding: "10px 20px", fontFamily: "'Inter', sans-serif", fontSize: "13px", fontWeight: 600 }}>
+            Upgrade to Pro — $4.99/month
           </div>
         </div>
       )}
@@ -1257,6 +523,235 @@ const InfiniteFeed = ({ user, preferences, recentSearches, isPro, bookmarks, onB
   );
 };
 
+/* ─── Search View ────────────────────────────────────────── */
+const SearchView = ({ user, isPro, bookmarks, onBM, onOpen, onShowPaywall, searchHistory, searchCount }) => {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
+  const inputRef = useRef();
+
+  useEffect(() => { setTimeout(() => inputRef.current?.focus(), 100); }, []);
+
+  const doSearch = async () => {
+    if (!query.trim()) return;
+    if (!user) { onShowPaywall(); return; }
+    if (!isPro && searchCount >= FREE_LIMIT) { onShowPaywall(); return; }
+    setLoading(true);
+    setSearched(true);
+    const r = await callAPI(query, isPro);
+    setResults(r);
+    setLoading(false);
+  };
+
+  return (
+    <div style={{ background: B.white, minHeight: "100vh", paddingBottom: "80px" }}>
+      {/* Search bar */}
+      <div style={{ padding: "12px 16px", position: "sticky", top: 0, background: B.white, zIndex: 80, borderBottom: `1px solid ${B.border}` }}>
+        <div style={{ display: "flex", alignItems: "center", background: B.bg, borderRadius: "12px", border: `1px solid ${B.border}` }}>
+          <svg style={{ margin: "0 10px 0 14px", color: B.muted, flexShrink: 0 }} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input ref={inputRef} value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && doSearch()}
+            placeholder="Jollof Rice, Pasta, Healthy Breakfast..."
+            style={{ flex: 1, border: "none", outline: "none", padding: "13px 0", fontFamily: "'Inter', sans-serif", fontSize: "15px", background: "transparent", color: B.dark }}
+          />
+          {query && <button onClick={() => { setQuery(""); setResults([]); setSearched(false); }} style={{ background: "none", border: "none", padding: "0 14px", cursor: "pointer", color: B.muted, fontSize: "18px" }}>×</button>}
+          <button onClick={doSearch} className="btn-primary" style={{ margin: "5px", borderRadius: "9px", padding: "9px 16px", fontSize: "13px" }}>Search</button>
+        </div>
+      </div>
+
+      <div style={{ padding: "16px" }}>
+        {!searched && (
+          <>
+            {searchHistory.length > 0 && (
+              <div style={{ marginBottom: "24px" }}>
+                <div style={{ fontFamily: "'Poppins', sans-serif", fontSize: "12px", fontWeight: 700, color: B.muted, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "10px" }}>Recent</div>
+                {searchHistory.slice(0, 6).map((item, i) => (
+                  <div key={i} onClick={() => { setQuery(item.query); doSearch(); }} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "11px 8px", borderRadius: "10px", cursor: "pointer", transition: "background 0.15s" }}
+                    onMouseEnter={e => e.currentTarget.style.background = B.bg}
+                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "14px", color: B.dark, flex: 1, textTransform: "capitalize" }}>{item.query}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div>
+              <div style={{ fontFamily: "'Poppins', sans-serif", fontSize: "12px", fontWeight: 700, color: B.muted, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "10px" }}>Trending</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                {["Jollof Rice","Carbonara","Chicken Tikka","Birria Tacos","Ramen","Egusi Soup","Smash Burger","Pad Thai","Tiramisu","Suya","Butter Chicken","Peking Duck","Shakshuka","Ceviche"].map(s => (
+                  <button key={s} onClick={() => { setQuery(s); setTimeout(doSearch, 50); }} style={{ background: B.bg, border: `1px solid ${B.border}`, borderRadius: "20px", padding: "7px 14px", cursor: "pointer", fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.dark, transition: "all 0.18s" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = B.dark; e.currentTarget.style.color = "#fff"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = B.bg; e.currentTarget.style.color = B.dark; }}
+                  >{s}</button>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {loading && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+            {Array(4).fill(0).map((_, i) => <SkeletonCard key={i} />)}
+          </div>
+        )}
+
+        {searched && !loading && (
+          <>
+            <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "18px", color: B.dark, marginBottom: "4px" }}>{query}</div>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted, marginBottom: "16px" }}>{results.length} recipes found</div>
+            {results.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "60px 0", color: B.muted }}>
+                <div style={{ fontSize: "40px", marginBottom: "12px" }}>🔍</div>
+                <div style={{ fontFamily: "'Poppins', sans-serif", fontSize: "16px" }}>No recipes found</div>
+              </div>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                {results.map((r, i) => (
+                  <RecipeCard key={i} r={r} onOpen={() => onOpen(r)} bookmarked={bookmarks.some(b => b.title === r.title)} onBM={() => onBM(r)} />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+/* ─── Saved View ─────────────────────────────────────────── */
+const SavedView = ({ bookmarks, onOpen, onBM }) => (
+  <div style={{ padding: "20px 16px 80px", background: B.white, minHeight: "100vh" }}>
+    <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "22px", color: B.dark, marginBottom: "4px" }}>Saved</div>
+    <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.muted, marginBottom: "20px" }}>{bookmarks.length} recipes</div>
+    {bookmarks.length === 0 ? (
+      <div style={{ textAlign: "center", padding: "80px 0" }}>
+        <div style={{ fontSize: "48px", opacity: 0.2, marginBottom: "16px" }}>🔖</div>
+        <div style={{ fontFamily: "'Poppins', sans-serif", fontSize: "18px", color: B.muted }}>Nothing saved yet</div>
+      </div>
+    ) : (
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+        {bookmarks.map((r, i) => <RecipeCard key={i} r={r} onOpen={() => onOpen(r)} bookmarked={true} onBM={() => onBM(r)} />)}
+      </div>
+    )}
+  </div>
+);
+
+/* ─── Profile View ───────────────────────────────────────── */
+const ProfileView = ({ user, isPro, onSignIn, onSignOut, onUpgrade, searchCount, searchHistory, bookmarks, loadingPayment }) => (
+  <div style={{ padding: "20px 16px 80px", background: B.white, minHeight: "100vh" }}>
+    {user ? (
+      <>
+        {/* User card */}
+        <div style={{ display: "flex", alignItems: "center", gap: "14px", padding: "16px", background: B.bg, borderRadius: "16px", marginBottom: "20px" }}>
+          <img src={user.photoURL} alt={user.displayName} style={{ width: "52px", height: "52px", borderRadius: "50%", objectFit: "cover", border: `2px solid ${isPro ? B.orange : B.border}` }} />
+          <div>
+            <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "16px", color: B.dark }}>{user.displayName}</div>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted }}>{user.email}</div>
+            <div style={{ marginTop: "4px" }}>
+              <span style={{ background: isPro ? "#F0FDF4" : B.bg, color: isPro ? "#16A34A" : B.muted, border: `1px solid ${isPro ? "#BBF7D0" : B.border}`, borderRadius: "20px", padding: "2px 10px", fontSize: "11px", fontWeight: 700 }}>
+                {isPro ? "✓ Pro" : "Free Plan"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "24px" }}>
+          {[["Saved", bookmarks.length], ["Searches", searchHistory.length], ["Today", `${searchCount}/${FREE_LIMIT}`]].map(([label, val]) => (
+            <div key={label} style={{ background: B.bg, borderRadius: "12px", padding: "14px 10px", textAlign: "center" }}>
+              <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "18px", color: B.dark }}>{val}</div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", color: B.muted, marginTop: "2px" }}>{label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Upgrade if free */}
+        {!isPro && (
+          <div onClick={onUpgrade} style={{ background: B.dark, borderRadius: "16px", padding: "20px", cursor: "pointer", marginBottom: "20px", transition: "opacity 0.2s" }}
+            onMouseEnter={e => e.currentTarget.style.opacity = "0.92"}
+            onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+          >
+            <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "16px", color: "#fff", marginBottom: "4px" }}>Upgrade to Pro</div>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.5)", marginBottom: "14px" }}>Unlimited searches, 6 recipes per search, full personalisation</div>
+            <div style={{ display: "inline-block", background: B.orange, color: "#fff", borderRadius: "8px", padding: "8px 16px", fontSize: "13px", fontWeight: 600 }}>
+              {loadingPayment ? "Redirecting..." : "$4.99 / month"}
+            </div>
+          </div>
+        )}
+
+        {/* Menu items */}
+        {[["⚙️","Settings","Coming soon"],["❓","Help & Support","support@keyangle.tech"],["📊","Search History",`${searchHistory.length} searches`]].map(([icon,label,sub]) => (
+          <div key={label} style={{ display: "flex", alignItems: "center", gap: "14px", padding: "16px 4px", borderBottom: `1px solid ${B.border}`, cursor: "pointer" }}>
+            <span style={{ fontSize: "18px", width: "28px", textAlign: "center" }}>{icon}</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "14px", fontWeight: 500, color: B.dark }}>{label}</div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted }}>{sub}</div>
+            </div>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+          </div>
+        ))}
+
+        <button onClick={onSignOut} style={{ width: "100%", marginTop: "24px", padding: "14px", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "12px", cursor: "pointer", fontFamily: "'Inter', sans-serif", fontSize: "14px", fontWeight: 600, color: "#DC2626", transition: "all 0.18s" }}>
+          Sign Out
+        </button>
+      </>
+    ) : (
+      <div style={{ textAlign: "center", padding: "60px 0" }}>
+        <Logo height={44} />
+        <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "22px", color: B.dark, margin: "24px 0 8px" }}>Join Mama K</div>
+        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "14px", color: B.muted, lineHeight: 1.6, marginBottom: "28px" }}>Sign in to personalise your feed and save your favourite recipes.</div>
+        <button onClick={onSignIn} className="btn-primary" style={{ width: "100%", padding: "14px", borderRadius: "14px", fontSize: "15px", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px" }}>
+          <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+          Continue with Google
+        </button>
+      </div>
+    )}
+  </div>
+);
+
+/* ─── Bottom Navigation ──────────────────────────────────── */
+const BottomNav = ({ activeTab, onChange }) => {
+  const tabs = [
+    { id: "home", label: "Home", icon: (active) => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? B.orange : "none"} stroke={active ? B.orange : B.muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    )},
+    { id: "search", label: "Search", icon: (active) => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? B.orange : B.muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    )},
+    { id: "saved", label: "Saved", icon: (active) => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? B.orange : "none"} stroke={active ? B.orange : B.muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m19 21-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+    )},
+    { id: "profile", label: "Profile", icon: (active) => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? B.orange : B.muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    )},
+  ];
+
+  return (
+    <nav style={{
+      position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100,
+      background: "rgba(255,255,255,0.95)", backdropFilter: "blur(20px)",
+      borderTop: `1px solid ${B.border}`,
+      display: "flex", alignItems: "center",
+      paddingBottom: "env(safe-area-inset-bottom, 0px)",
+    }}>
+      {tabs.map(tab => (
+        <button key={tab.id} onClick={() => onChange(tab.id)} style={{
+          flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
+          padding: "10px 0 8px", background: "none", border: "none", cursor: "pointer",
+          transition: "all 0.18s",
+        }}>
+          {tab.icon(activeTab === tab.id)}
+          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", fontWeight: activeTab === tab.id ? 600 : 400, color: activeTab === tab.id ? B.orange : B.muted, marginTop: "3px" }}>
+            {tab.label}
+          </span>
+        </button>
+      ))}
+    </nav>
+  );
+};
+
+/* ─── Main App ───────────────────────────────────────────── */
 export default function App() {
   useEffect(() => {
     if (!document.querySelector("#mamak-css")) {
@@ -1268,742 +763,175 @@ export default function App() {
   }, []);
 
   const [user, setUser] = useState(null);
-  const [authReady, setAuthReady] = useState(false);
-  const [view, setView] = useState("home");
-  const [searchQ, setSearchQ] = useState("");
-  const [searchLabel, setSearchLabel] = useState("");
-  const [preloadedRecipes, setPreloadedRecipes] = useState([]);
+  const [tab, setTab] = useState("home");
+  const [activeFilter, setActiveFilter] = useState("All");
   const [selected, setSelected] = useState(null);
   const [bookmarks, setBookmarks] = useState([]);
   const [showPaywall, setShowPaywall] = useState(false);
-  const [heroInput, setHeroInput] = useState("");
-  const [menuOpen, setMenuOpen] = useState(false);
   const [isPro, setIsPro] = useState(false);
   const [searchCount, setSearchCount] = useState(0);
-  const [loadingPayment, setLoadingPayment] = useState(false);
-  // Phase 1
   const [searchHistory, setSearchHistory] = useState([]);
-  const [sectionOrder, setSectionOrder] = useState(null);
   const [preferences, setPreferences] = useState(null);
-  const [feedKey, setFeedKey] = useState(0);
-  const [feedTab, setFeedTab] = useState("foryou");
+  const [loadingPayment, setLoadingPayment] = useState(false);
+  const prevTab = useRef("home");
 
-  // Auth state + load user data from Firestore on sign in
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u);
-      setAuthReady(true);
       if (u) {
-        const [pro, count, bm, history, order] = await Promise.all([
+        const [pro, count, bm, hist] = await Promise.all([
           getUserProStatus(u.uid),
           getServerSearchCount(u.uid),
           loadBookmarksFromFirestore(u.uid),
           getSearchHistory(u.uid),
-          getAdaptiveSectionOrder(u.uid),
         ]);
         setIsPro(pro);
         setSearchCount(count);
         setBookmarks(bm);
-        setSearchHistory(history);
-        setSectionOrder(order);
-        // Load preference profile for feed personalization
+        setSearchHistory(hist);
         const { getPreferenceProfile } = await import("./firebase.js");
         const prefs = await getPreferenceProfile(u.uid);
         setPreferences(prefs);
       } else {
-        setSearchCount(parseInt(localStorage.getItem("mk_sc_guest") || "0"));
         setBookmarks(getBM());
-        setIsPro(false);
-        setSearchHistory([]);
-        setSectionOrder(null);
+        setSearchCount(parseInt(localStorage.getItem("mk_sc_guest") || "0"));
       }
     });
     return unsub;
   }, []);
 
-  // Check payment success on URL (Flutterwave redirect)
-  // Only grant Pro if transaction was actually verified
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const payment = params.get("payment");
-    const txRef = params.get("tx_ref");
-    const status = params.get("status");
-
-    // Flutterwave returns status=successful on real payments
-    // If user cancelled, status will be "cancelled" or missing
-    if (payment === "success" && status === "successful" && txRef && user?.uid) {
-      import("./firebase.js").then(({ setUserPro }) => {
-        setUserPro(user.uid).then(() => {
-          setIsPro(true);
-          window.history.replaceState({}, "", window.location.pathname);
-        });
-      });
-    } else if (payment === "success" && status !== "successful") {
-      // User cancelled or payment failed — clear URL params, keep free status
-      window.history.replaceState({}, "", window.location.pathname);
-    }
-  }, [user]);
-
-  const isBM = (r) => bookmarks.some(b => b.title === r.title);
-  const toggleBM = (r) => {
-    const updated = isBM(r)
-      ? bookmarks.filter(b => b.title !== r.title)
-      : [...bookmarks, r];
+  const isBM = r => bookmarks.some(b => b.title === r.title);
+  const toggleBM = r => {
+    const updated = isBM(r) ? bookmarks.filter(b => b.title !== r.title) : [...bookmarks, r];
     setBookmarks(updated);
     saveBM(updated);
     if (user?.uid) {
       syncBookmarksToFirestore(user.uid, updated);
-      // Bookmarking = strong preference signal
-      if (!isBM(r)) {
-        updatePreferenceProfile(user.uid, {
-          query: r.title,
-          cuisine: r.cuisine,
-          region: r.region,
-          difficulty: r.difficulty,
-          tags: r.tags || [],
-        });
-      }
+      if (!isBM(r)) updatePreferenceProfile(user.uid, { query: r.title, cuisine: r.cuisine, region: r.region, difficulty: r.difficulty, tags: r.tags || [] });
     }
   };
 
-  const doSearch = async (q, label, preloaded) => {
-    const query = (q || "").trim();
-    if (!query) return;
-
-    // Force sign in
-    if (!user) { setShowPaywall(true); return; }
-
-    // Check limit
-    if (!isPro && searchCount >= FREE_LIMIT) { setShowPaywall(true); return; }
-
-    // Increment count
-    const newCount = await incrementServerSearchCount(user.uid);
-    setSearchCount(newCount);
-
-    // Log search history (non-blocking)
-    logSearchHistory(user.uid, query).then(() => {
-      setSearchHistory(prev => [{ query, searchedAt: new Date(), id: Date.now().toString() }, ...prev].slice(0, 20));
-    });
-
-    // Update preference profile from section metadata if available
-    if (preloaded) {
-      updatePreferenceProfile(user.uid, {
-        query,
-        cuisine: preloaded.cuisine,
-        region: preloaded.region,
-        difficulty: preloaded.difficulty,
-        tags: preloaded.tags || [],
-      });
-    } else {
-      updatePreferenceProfile(user.uid, { query });
-    }
-
-    setSearchQ(query);
-    setSearchLabel(label || query);
-    setPreloadedRecipes(preloaded ? [preloaded] : []);
-    setView("results");
-  };
+  const openRecipe = r => { setSelected(r); if (user?.uid) trackEngagement(user.uid, { type: "open", recipe: r }); };
+  const closeRecipe = () => setSelected(null);
 
   const handleUpgrade = async () => {
     if (!user) { setShowPaywall(true); return; }
     setLoadingPayment(true);
     try {
-      const res = await fetch("/api/payment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uid: user.uid, email: user.email, name: user.displayName }),
-      });
+      const res = await fetch("/api/payment", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ uid: user.uid, email: user.email, name: user.displayName }) });
       const data = await res.json();
-      if (data.paymentLink) {
-        window.location.href = data.paymentLink;
-      } else {
-        alert("Payment setup failed. Please try again.");
-      }
-    } catch {
-      alert("Something went wrong. Please try again.");
-    } finally {
-      setLoadingPayment(false);
-    }
+      if (data.paymentLink) window.location.href = data.paymentLink;
+      else alert("Payment unavailable. Try again.");
+    } catch { alert("Something went wrong."); }
+    setLoadingPayment(false);
   };
 
-  const remaining = isPro ? null : Math.max(0, FREE_LIMIT - searchCount);
+  const handleTabChange = t => { prevTab.current = tab; setTab(t); };
+
+  // Check Flutterwave redirect
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("payment") === "success" && params.get("status") === "successful" && user?.uid) {
+      import("./firebase.js").then(({ setUserPro }) => setUserPro(user.uid).then(() => { setIsPro(true); window.history.replaceState({}, "", window.location.pathname); }));
+    } else if (params.get("payment")) {
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [user]);
 
   return (
-    <div style={{ fontFamily: "'DM Sans', sans-serif", background: B.bg, minHeight: "100vh", color: B.black }}>
+    <div style={{ fontFamily: "'Inter', sans-serif", background: B.bg, minHeight: "100vh", maxWidth: "600px", margin: "0 auto", position: "relative" }}>
       {showPaywall && (
         <Paywall
           user={user}
-          onSignIn={async () => { try { await signInWithGoogle(); setShowPaywall(false); } catch (e) { console.error(e); } }}
+          onSignIn={async () => { try { await signInWithGoogle(); setShowPaywall(false); } catch {} }}
           onDismiss={() => setShowPaywall(false)}
           onUpgrade={handleUpgrade}
-          onLoading={loadingPayment}
+          loading={loadingPayment}
         />
       )}
 
-      {/* ── NAV ── */}
-      <nav style={{
-        position: "sticky", top: 0, zIndex: 90,
-        background: "rgba(249,248,245,0.95)", backdropFilter: "blur(24px)",
-        WebkitBackdropFilter: "blur(24px)",
-        borderBottom: `0.5px solid ${B.border}`,
-        padding: "0 20px", height: "52px",
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-      }}>
-        {/* Left: Logo + Nav Tabs */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0" }}>
-          <div onClick={() => { setView("home"); setFeedTab("foryou"); }} style={{ cursor: "pointer", flexShrink: 0, marginRight: "20px" }}>
-            <Logo height={34} />
-          </div>
-          {[{ id: "foryou", label: "For You" }, { id: "discover", label: "Explore" }].map(tab => (
-            <button key={tab.id} onClick={() => { setView("home"); setFeedTab(tab.id); }} style={{
-              background: "none", border: "none", cursor: "pointer",
-              padding: "0 14px", height: "52px",
-              fontFamily: "'DM Sans', sans-serif", fontSize: "14px",
-              fontWeight: feedTab === tab.id && view === "home" ? 600 : 400,
-              color: feedTab === tab.id && view === "home" ? B.dark : B.muted,
-              borderBottom: feedTab === tab.id && view === "home" ? `2px solid ${B.orange}` : "2px solid transparent",
-              transition: "all 0.18s", whiteSpace: "nowrap",
-            }}>{tab.label}</button>
-          ))}
+      {/* Recipe detail overlay */}
+      {selected && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 200, overflowY: "auto", background: B.white }}>
+          <DetailView
+            recipe={selected}
+            bookmarked={isBM(selected)}
+            onBM={() => toggleBM(selected)}
+            onBack={closeRecipe}
+            onOpen={r => { closeRecipe(); setTimeout(() => openRecipe(r), 50); }}
+          />
         </div>
+      )}
 
-        {/* Right: Search, counter, profile */}
-        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-          <button onClick={() => setView("search")} style={{
-            background: "none", border: "none", cursor: "pointer",
-            width: "34px", height: "34px", borderRadius: "50%",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: B.muted, transition: "all 0.18s",
-          }}
-            onMouseEnter={e => { e.currentTarget.style.background = B.bg; e.currentTarget.style.color = B.dark; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = B.muted; }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-            </svg>
-          </button>
-
-          <button onClick={() => setView("saved")} style={{
-            background: "none", border: "none", cursor: "pointer",
-            display: "flex", alignItems: "center", gap: "3px",
-            padding: "5px 8px", borderRadius: "20px", transition: "all 0.18s",
-            color: view === "saved" ? B.dark : B.muted,
-          }}>
-            <span style={{ color: B.orange, fontSize: "14px" }}>♥</span>
-            {bookmarks.length > 0 && <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "11px", fontWeight: 600 }}>{bookmarks.length}</span>}
-          </button>
-
-          <div style={{
-            background: isPro ? "#F0FDF4" : remaining > 0 ? B.bg : "#FFF1F2",
-            color: isPro ? "#15803D" : remaining > 0 ? B.muted : "#BE123C",
-            border: `0.5px solid ${isPro ? "#BBF7D0" : remaining > 0 ? B.border : "#FECDD3"}`,
-            padding: "5px 10px", borderRadius: "20px",
-            fontFamily: "'DM Sans', sans-serif", fontSize: "11px", fontWeight: 600,
-            whiteSpace: "nowrap",
-          }}>
-            {isPro ? "Pro" : remaining > 0 ? "1 free" : "0 left"}
+      {/* Top bar — only on home and saved */}
+      {(tab === "home" || tab === "saved") && (
+        <div style={{
+          position: "sticky", top: 0, zIndex: 90,
+          background: "rgba(255,255,255,0.95)", backdropFilter: "blur(20px)",
+          borderBottom: `1px solid ${B.border}`,
+          padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between",
+        }}>
+          <Logo height={34} />
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            {!isPro && (
+              <div style={{ background: B.bg, border: `1px solid ${B.border}`, borderRadius: "20px", padding: "4px 10px", fontFamily: "'Inter', sans-serif", fontSize: "11px", fontWeight: 600, color: searchCount >= FREE_LIMIT ? "#DC2626" : B.muted }}>
+                {searchCount >= FREE_LIMIT ? "0 left" : "1 free"}
+              </div>
+            )}
+            {isPro && (
+              <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: "20px", padding: "4px 10px", fontFamily: "'Inter', sans-serif", fontSize: "11px", fontWeight: 700, color: "#16A34A" }}>
+                Pro
+              </div>
+            )}
+            {user ? (
+              <img src={user.photoURL} alt="" onClick={() => handleTabChange("profile")} style={{ width: "30px", height: "30px", borderRadius: "50%", objectFit: "cover", cursor: "pointer", border: `2px solid ${isPro ? B.orange : B.border}` }} />
+            ) : (
+              <button onClick={() => setShowPaywall(true)} className="btn-primary" style={{ padding: "6px 14px", borderRadius: "20px", fontSize: "12px" }}>Sign in</button>
+            )}
           </div>
-
-          {user ? (
-            <div style={{ position: "relative" }}>
-              <img src={user.photoURL} alt={user.displayName} onClick={() => setMenuOpen(!menuOpen)}
-                style={{ width: "30px", height: "30px", borderRadius: "50%", cursor: "pointer", border: `2px solid ${isPro ? B.orange : B.border}`, objectFit: "cover", display: "block" }}
-              />
-              {menuOpen && (
-                <div style={{
-                  position: "absolute", top: "38px", right: 0,
-                  background: B.white, borderRadius: "16px", padding: "6px",
-                  boxShadow: "0 12px 40px rgba(0,0,0,0.14)", border: `0.5px solid ${B.border}`,
-                  minWidth: "200px", animation: "fadeIn 0.18s ease", zIndex: 100,
-                }}>
-                  <div style={{ padding: "12px 14px 8px" }}>
-                    <div style={{ fontSize: "13px", fontWeight: 600, color: B.dark, marginBottom: "2px" }}>{user.displayName}</div>
-                    <div style={{ fontSize: "11px", color: B.muted, marginBottom: "6px" }}>{user.email}</div>
-                    <span style={{
-                      background: isPro ? "#F0FDF4" : B.bg,
-                      border: `0.5px solid ${isPro ? "#BBF7D0" : B.border}`,
-                      borderRadius: "20px", padding: "3px 10px",
-                      fontSize: "10px", fontWeight: 700,
-                      color: isPro ? "#15803D" : B.muted,
-                    }}>{isPro ? "✓ Pro Member" : "Free Plan"}</span>
-                  </div>
-                  <div style={{ height: "0.5px", background: B.border, margin: "2px 0" }} />
-                  {[
-                    { icon: "👤", label: "Account", action: () => { alert(`Name: ${user.displayName}\nEmail: ${user.email}\nPlan: ${isPro ? "Pro" : "Free"}`); setMenuOpen(false); } },
-                    { icon: "🔍", label: `History ${searchHistory.length > 0 ? "("+searchHistory.length+")" : ""}`, action: () => { setView("history"); setMenuOpen(false); } },
-                    { icon: "🔖", label: "Saved Recipes", action: () => { setView("saved"); setMenuOpen(false); } },
-                    { icon: "⭐", label: isPro ? "Manage Subscription" : "Upgrade to Pro", action: () => { setShowPaywall(true); setMenuOpen(false); }, highlight: !isPro },
-                    { icon: "⚙️", label: "Settings", action: () => { alert("Coming soon"); setMenuOpen(false); } },
-                    { icon: "❓", label: "Help", action: () => { window.open("mailto:support@keyangle.tech"); setMenuOpen(false); } },
-                  ].map(item => (
-                    <button key={item.label} onClick={item.action} style={{
-                      width: "100%", background: "none", border: "none", padding: "9px 14px",
-                      fontFamily: "'DM Sans', sans-serif", fontSize: "13px",
-                      color: item.highlight ? B.orange : B.dark, fontWeight: item.highlight ? 600 : 400,
-                      cursor: "pointer", textAlign: "left", borderRadius: "10px",
-                      display: "flex", alignItems: "center", gap: "10px", transition: "background 0.15s",
-                    }}
-                      onMouseEnter={e => e.currentTarget.style.background = B.bg}
-                      onMouseLeave={e => e.currentTarget.style.background = "none"}
-                    ><span>{item.icon}</span>{item.label}</button>
-                  ))}
-                  <div style={{ height: "0.5px", background: B.border, margin: "2px 0" }} />
-                  <button onClick={() => { signOutUser(); setMenuOpen(false); setIsPro(false); setSearchCount(0); setBookmarks([]); setSearchHistory([]); setPreferences(null); }} style={{
-                    width: "100%", background: "none", border: "none", padding: "9px 14px",
-                    fontFamily: "'DM Sans', sans-serif", fontSize: "13px", color: "#BE123C",
-                    cursor: "pointer", textAlign: "left", borderRadius: "10px",
-                    display: "flex", alignItems: "center", gap: "10px", transition: "background 0.15s",
-                  }}
-                    onMouseEnter={e => e.currentTarget.style.background = "#FFF1F2"}
-                    onMouseLeave={e => e.currentTarget.style.background = "none"}
-                  ><span>🚪</span> Sign out</button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <button onClick={() => setShowPaywall(true)} style={{
-              background: B.orange, color: "#fff", border: "none", borderRadius: "20px",
-              padding: "7px 16px", cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
-              fontSize: "12px", fontWeight: 600, transition: "all 0.18s",
-            }}
-              onMouseEnter={e => e.currentTarget.style.background = B.orangeHover}
-              onMouseLeave={e => e.currentTarget.style.background = B.orange}
-            >Sign in</button>
-          )}
         </div>
-      </nav>
+      )}
 
-      {/* ── HOME ── */}
-      {view === "home" && (
+      {/* Tab content */}
+      {tab === "home" && (
         <>
-          {/* CINEMATIC HERO */}
-          <div style={{
-            background: B.dark, position: "relative", overflow: "hidden",
-            padding: "64px 24px 56px",
-            minHeight: "480px", display: "flex", alignItems: "center",
-          }}>
-            {/* Decorative orbs */}
-            <div style={{
-              position: "absolute", top: "-80px", right: "-60px",
-              width: "500px", height: "500px", borderRadius: "50%",
-              background: `radial-gradient(circle, ${B.orange}22 0%, transparent 70%)`,
-              pointerEvents: "none",
-            }} />
-            <div style={{
-              position: "absolute", bottom: "-120px", left: "10%",
-              width: "400px", height: "400px", borderRadius: "50%",
-              background: `radial-gradient(circle, ${B.orange}12 0%, transparent 70%)`,
-              pointerEvents: "none",
-            }} />
-
-            <div style={{ maxWidth: "1200px", margin: "0 auto", width: "100%", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "60px", alignItems: "center", position: "relative", zIndex: 1 }}>
-              <div style={{ animation: "fadeUp 0.6s ease" }}>
-                <div style={{
-                  display: "inline-flex", alignItems: "center", gap: "7px",
-                  background: `${B.orange}20`, border: `1px solid ${B.orange}40`,
-                  borderRadius: "24px", padding: "6px 16px", marginBottom: "28px",
-                }}>
-                  <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: B.orange, animation: "pulse 1.5s ease infinite" }} />
-                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "11px", fontWeight: 600, color: B.orange, letterSpacing: "0.1em", textTransform: "uppercase" }}>
-                    AI Powered Recipe Discovery
-                  </span>
-                </div>
-
-                <h1 style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: "clamp(30px,5vw,60px)", fontWeight: 400, color: "#fff", lineHeight: 1.08, marginBottom: "18px", letterSpacing: "-0.02em" }}>
-                  The world's<br />
-                  <em style={{ fontStyle: "italic", color: B.orange }}>finest recipes</em>,<br />
-                  in one place.
-                </h1>
-
-                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "14px", color: "rgba(255,255,255,0.5)", lineHeight: 1.7, marginBottom: "32px", maxWidth: "380px" }}>
-                  From French Bouillabaisse to Japanese Ramen, discover authentic, AI generated recipes from every corner of the world.
-                </p>
-
-                <div style={{
-                  background: "rgba(255,255,255,0.08)", backdropFilter: "blur(16px)",
-                  border: "1px solid rgba(255,255,255,0.15)", borderRadius: "18px",
-                  display: "flex", alignItems: "center", overflow: "hidden", maxWidth: "480px",
-                }}>
-                  <span style={{ padding: "0 14px 0 20px", fontSize: "18px", opacity: 0.5 }}>🔍</span>
-                  <input
-                    value={heroInput}
-                    onChange={e => setHeroInput(e.target.value)}
-                    onKeyDown={e => e.key === "Enter" && heroInput.trim() && doSearch(heroInput, heroInput)}
-                    placeholder="Nigerian Jollof, low-cal meals, pasta..."
-                    style={{
-                      flex: 1, border: "none", outline: "none", padding: "18px 0",
-                      fontFamily: "'DM Sans', sans-serif", fontSize: "15px",
-                      background: "transparent", color: "#fff",
-                    }}
-                  />
-                  <button className="btn-orange" onClick={() => heroInput.trim() && doSearch(heroInput, heroInput)}
-                    style={{ margin: "6px", borderRadius: "13px", padding: "13px 22px", fontSize: "13px" }}>
-                    Search
-                  </button>
-                </div>
-              </div>
-
-              {/* Featured grid */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", animation: "fadeUp 0.7s ease 0.15s both" }}>
-                {[
-                  { q: "Nigerian Party Jollof Rice", label: "Jollof Rice", emoji: "🍛", hot: true },
-                  { q: "Classic Italian Carbonara", label: "Carbonara", emoji: "🍝", hot: false },
-                  { q: "Japanese Tonkotsu Ramen", label: "Ramen", emoji: "🍜", hot: false },
-                  { q: "Mexican Birria Tacos", label: "Birria Tacos", emoji: "🌮", hot: true },
-                  { q: "Low Calorie Protein Bowl", label: "Protein Bowl", emoji: "🥗", hot: false },
-                  { q: "British Sunday Roast", label: "Sunday Roast", emoji: "🥩", hot: false },
-                ].map((f, i) => (
-                  <div key={i} onClick={() => doSearch(f.q, f.label)} style={{
-                    background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)",
-                    borderRadius: "16px", padding: "16px 12px", cursor: "pointer",
-                    textAlign: "center", transition: "all 0.25s ease", position: "relative",
-                    animation: "fadeUp 0.5s ease both", animationDelay: `${i * 60 + 300}ms`,
-                  }}
-                    onMouseEnter={e => { e.currentTarget.style.background = `${B.orange}22`; e.currentTarget.style.borderColor = `${B.orange}50`; e.currentTarget.style.transform = "translateY(-3px)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.07)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.transform = ""; }}
-                  >
-                    {f.hot && <div style={{ position: "absolute", top: "6px", right: "6px", background: B.orange, color: "#fff", fontSize: "8px", fontWeight: 700, padding: "2px 6px", borderRadius: "8px", letterSpacing: "0.06em" }}>HOT</div>}
-                    <div style={{ fontSize: "28px", marginBottom: "7px" }}>{f.emoji}</div>
-                    <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "11px", fontWeight: 600, color: "#fff" }}>{f.label}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* FOR YOU / DISCOVER TABS */}
-          <div style={{ background: B.white, borderBottom: `0.5px solid ${B.border}`, position: "sticky", top: "56px", zIndex: 80 }}>
-            {/* Feed tabs */}
-            <div style={{ display: "flex", padding: "0 20px", gap: "0" }}>
-              {[
-                { id: "foryou", label: user ? "For You" : "Discover", icon: user ? "✦" : "🌍" },
-                { id: "discover", label: "Explore", icon: "🔎" },
-              ].map(tab => (
-                <button key={tab.id} onClick={() => setFeedTab(tab.id)} style={{
-                  background: "none", border: "none", cursor: "pointer",
-                  padding: "14px 16px 12px",
-                  fontFamily: "'DM Sans', sans-serif", fontSize: "13px",
-                  fontWeight: feedTab === tab.id ? 600 : 400,
-                  color: feedTab === tab.id ? B.dark : B.muted,
-                  borderBottom: `2px solid ${feedTab === tab.id ? B.orange : "transparent"}`,
-                  transition: "all 0.18s",
-                  display: "flex", alignItems: "center", gap: "5px",
-                }}>
-                  <span style={{ fontSize: "12px" }}>{tab.icon}</span>
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Categories strip */}
-            <div style={{
-              display: "flex", gap: "8px", overflowX: "auto",
-              paddingLeft: "20px", paddingRight: "20px", paddingBottom: "12px",
-              scrollbarWidth: "none",
-            }}>
-              {REGIONS.map((r) => (
-                <button key={r.label} onClick={() => doSearch(r.q, r.label)} style={{
-                  background: B.bg, border: `0.5px solid ${B.border}`,
-                  borderRadius: "20px", padding: "6px 12px",
-                  cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
-                  fontSize: "11px", fontWeight: 500, color: B.dark,
-                  display: "flex", alignItems: "center", gap: "4px",
-                  whiteSpace: "nowrap", flexShrink: 0, transition: "all 0.18s",
-                }}
-                  onMouseEnter={e => { e.currentTarget.style.background = B.dark; e.currentTarget.style.color = "#fff"; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = B.bg; e.currentTarget.style.color = B.dark; }}
-                >
-                  {r.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* FOR YOU — Infinite personalized feed */}
-          {feedTab === "foryou" && (
-            <>
-              {/* Recent searches strip */}
-              {user && searchHistory.length > 0 && (
-                <div style={{ background: B.bg, padding: "12px 20px", borderBottom: `0.5px solid ${B.border}` }}>
-                  <div style={{ fontSize: "10px", fontWeight: 600, color: B.muted, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "8px" }}>
-                    Recent
-                  </div>
-                  <div style={{ display: "flex", gap: "8px", overflowX: "auto", scrollbarWidth: "none" }}>
-                    {searchHistory.slice(0, 6).map((item, i) => (
-                      <button key={i} onClick={() => doSearch(item.query, item.query)} style={{
-                        background: B.white, border: `0.5px solid ${B.border}`,
-                        borderRadius: "20px", padding: "5px 12px", flexShrink: 0,
-                        cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
-                        fontSize: "11px", color: B.dark, whiteSpace: "nowrap",
-                        transition: "all 0.18s",
-                      }}
-                        onMouseEnter={e => { e.currentTarget.style.background = B.dark; e.currentTarget.style.color = "#fff"; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = B.white; e.currentTarget.style.color = B.dark; }}
-                      >↩ {item.query}</button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {user ? (
-                <div>
-                  {/* Taste DNA — shows once preferences are built */}
-                  {preferences && Object.keys(preferences.regions || {}).length > 0 && (
-                    <div style={{ padding: "16px 20px 0" }}>
-                      <TasteDNA preferences={preferences} />
-                    </div>
-                  )}
-                  <InfiniteFeed
-                    key={feedKey}
-                    user={user}
-                    preferences={preferences}
-                    recentSearches={searchHistory}
-                    isPro={isPro}
-                    bookmarks={bookmarks}
-                    onBM={toggleBM}
-                    onOpen={r => { setSelected(r); setView("detail"); }}
-                    onUpgrade={handleUpgrade}
-                  />
-                </div>
-              ) : (
-                /* Guest — show sign-in prompt then curated sections */
-                <div>
-                  <div onClick={() => setShowPaywall(true)} style={{
-                    background: B.dark, margin: "16px 20px", borderRadius: "16px",
-                    padding: "20px", cursor: "pointer", display: "flex",
-                    alignItems: "center", justifyContent: "space-between", gap: "16px",
-                  }}>
-                    <div>
-                      <div style={{ fontFamily: "Georgia, serif", fontSize: "16px", color: "#fff", marginBottom: "4px" }}>
-                        Sign in for a personalised feed
-                      </div>
-                      <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.5)" }}>
-                        Recipes that adapt to your taste
-                      </div>
-                    </div>
-                    <div style={{ background: B.orange, color: "#fff", borderRadius: "10px", padding: "8px 16px", fontSize: "12px", fontWeight: 600, whiteSpace: "nowrap" }}>
-                      Sign in
-                    </div>
-                  </div>
-                  {(sectionOrder || FEATURED_SECTIONS.map(s => s.id)).map(id => {
-                    const section = FEATURED_SECTIONS.find(s => s.id === id);
-                    if (!section) return null;
-                    return <SectionRow key={section.id} section={section} onSelect={doSearch} bookmarks={bookmarks} onBM={toggleBM} />;
-                  })}
-                </div>
-              )}
-            </>
-          )}
-
-          {/* EXPLORE — Curated sections (always available) */}
-          {feedTab === "discover" && (
-            <>
-              {(sectionOrder || FEATURED_SECTIONS.map(s => s.id)).map(id => {
-                const section = FEATURED_SECTIONS.find(s => s.id === id);
-                if (!section) return null;
-                return <SectionRow key={section.id} section={section} onSelect={doSearch} bookmarks={bookmarks} onBM={toggleBM} />;
-              })}
-            </>
-          )}
-
-          {/* FOOTER */}
-          <footer style={{ background: B.dark, padding: "48px 40px" }}>
-            <div style={{ maxWidth: "1200px", margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "20px" }}>
-              <Logo height={40} light />
-              <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.35)" }}>
-                © 2026 Mama K Recipes. AI powered culinary discovery.
-              </div>
-              <div style={{ display: "flex", gap: "24px" }}>
-                {["Privacy", "Terms", "Contact"].map(l => (
-                  <span key={l} style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.35)", cursor: "pointer" }}>{l}</span>
-                ))}
-              </div>
-            </div>
-          </footer>
+          <FilterBar active={activeFilter} onChange={setActiveFilter} />
+          <HomeFeed
+            user={user} isPro={isPro} preferences={preferences}
+            recentSearches={searchHistory} bookmarks={bookmarks}
+            onBM={toggleBM} onOpen={openRecipe}
+            onUpgrade={() => setShowPaywall(true)}
+            activeFilter={activeFilter}
+          />
         </>
       )}
 
-      {/* ── RESULTS ── */}
-      {view === "results" && (
-        <ResultsView
-          query={searchQ}
-          label={searchLabel}
-          preloaded={preloadedRecipes}
-          onOpen={r => { setSelected(r); setView("detail"); }}
-          bookmarks={bookmarks}
-          onBM={toggleBM}
-          onSearch={doSearch}
-          isPro={isPro}
+      {tab === "search" && (
+        <SearchView
+          user={user} isPro={isPro} bookmarks={bookmarks}
+          onBM={toggleBM} onOpen={openRecipe}
+          onShowPaywall={() => setShowPaywall(true)}
+          searchHistory={searchHistory}
+          searchCount={searchCount}
+        />
+      )}
+
+      {tab === "saved" && <SavedView bookmarks={bookmarks} onOpen={openRecipe} onBM={toggleBM} />}
+
+      {tab === "profile" && (
+        <ProfileView
+          user={user} isPro={isPro}
+          onSignIn={async () => { try { await signInWithGoogle(); } catch {} }}
+          onSignOut={() => { signOutUser(); setIsPro(false); setSearchCount(0); setBookmarks([]); setSearchHistory([]); setPreferences(null); }}
           onUpgrade={handleUpgrade}
+          searchCount={searchCount}
+          searchHistory={searchHistory}
+          bookmarks={bookmarks}
+          loadingPayment={loadingPayment}
         />
       )}
 
-      {/* ── DETAIL ── */}
-      {view === "detail" && selected && (
-        <DetailView
-          recipe={selected}
-          bookmarked={isBM(selected)}
-          onBM={() => toggleBM(selected)}
-          onBack={() => setView("results")}
-        />
-      )}
-
-      {/* ── SAVED ── */}
-      {view === "saved" && (
-        <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "48px 32px" }}>
-          <div style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: "42px", fontWeight: 600, marginBottom: "8px" }}>Saved Recipes</div>
-          <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "13px", color: B.muted, marginBottom: "36px" }}>{bookmarks.length} recipes saved</div>
-
-          {bookmarks.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "100px 0" }}>
-              <div style={{ fontSize: "60px", opacity: 0.2, marginBottom: "20px" }}>♡</div>
-              <div style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: "28px", marginBottom: "20px", color: B.muted }}>Nothing saved yet</div>
-              <button className="btn-orange" onClick={() => setView("home")} style={{ padding: "14px 32px", borderRadius: "14px", fontSize: "14px" }}>
-                Explore Recipes
-              </button>
-            </div>
-          ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: "16px" }}>
-              {bookmarks.map((r, i) => (
-                <RecipeCard key={i} idx={i} r={r} wide
-                  onOpen={() => { setSelected(r); setView("detail"); }}
-                  bookmarked={true} onBM={() => toggleBM(r)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── HISTORY ── */}
-      {view === "history" && (
-        <div style={{ maxWidth: "800px", margin: "0 auto", padding: "40px 20px" }}>
-          <button onClick={() => setView("home")} style={{
-            background: "none", border: "none", cursor: "pointer",
-            fontFamily: "'DM Sans', sans-serif", fontSize: "14px",
-            color: B.orange, fontWeight: 500, padding: 0, marginBottom: "24px", display: "block",
-          }}>‹ Home</button>
-
-          <div style={{ fontFamily: "Georgia, serif", fontSize: "32px", fontWeight: 400, marginBottom: "6px" }}>
-            Search History
-          </div>
-          <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "13px", color: B.muted, marginBottom: "32px" }}>
-            {searchHistory.length} recent searches
-          </div>
-
-          {searchHistory.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "80px 0", color: B.muted }}>
-              <div style={{ fontSize: "48px", marginBottom: "16px", opacity: 0.3 }}>🔍</div>
-              <div style={{ fontFamily: "Georgia, serif", fontSize: "22px" }}>No searches yet</div>
-            </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-              {searchHistory.map((item, i) => (
-                <div key={i} onClick={() => doSearch(item.query, item.query)} style={{
-                  display: "flex", alignItems: "center", justifyContent: "space-between",
-                  padding: "14px 16px", borderRadius: "12px", cursor: "pointer",
-                  transition: "background 0.15s",
-                  animation: "fadeUp 0.3s ease both", animationDelay: `${i * 25}ms`,
-                }}
-                  onMouseEnter={e => e.currentTarget.style.background = B.bg}
-                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <span style={{ fontSize: "14px", opacity: 0.4 }}>🔍</span>
-                    <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "14px", color: B.dark, textTransform: "capitalize" }}>
-                      {item.query}
-                    </span>
-                  </div>
-                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "11px", color: B.muted }}>
-                    Search again ↩
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-      {/* ── SEARCH ── */}
-      {view === "search" && (
-        <div style={{ minHeight: "100vh", background: B.bg }}>
-          <div style={{
-            background: B.white, borderBottom: `0.5px solid ${B.border}`,
-            padding: "10px 16px", display: "flex", alignItems: "center", gap: "10px",
-            position: "sticky", top: 0, zIndex: 80,
-          }}>
-            <button onClick={() => setView("home")} style={{
-              background: "none", border: "none", cursor: "pointer",
-              color: B.orange, fontSize: "14px", fontWeight: 500,
-              fontFamily: "'DM Sans', sans-serif", padding: 0, flexShrink: 0,
-            }}>‹ Back</button>
-            <div style={{
-              flex: 1, background: B.bg, borderRadius: "10px",
-              border: `0.5px solid ${B.border}`,
-              display: "flex", alignItems: "center",
-            }}>
-              <svg style={{ margin: "0 8px 0 12px", flexShrink: 0, color: B.muted }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-              </svg>
-              <input
-                autoFocus
-                value={heroInput}
-                onChange={e => setHeroInput(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter" && heroInput.trim()) { doSearch(heroInput, heroInput); setView("results"); }}}
-                placeholder="Search any dish, cuisine or ingredient..."
-                style={{
-                  flex: 1, border: "none", outline: "none", padding: "12px 0",
-                  fontFamily: "'DM Sans', sans-serif", fontSize: "15px",
-                  background: "transparent", color: B.dark,
-                }}
-              />
-              {heroInput && (
-                <button onClick={() => setHeroInput("")} style={{
-                  background: "none", border: "none", padding: "0 12px",
-                  cursor: "pointer", color: B.muted, fontSize: "18px", lineHeight: 1,
-                }}>x</button>
-              )}
-            </div>
-          </div>
-          <div style={{ padding: "20px" }}>
-            {searchHistory.length > 0 && (
-              <div style={{ marginBottom: "28px" }}>
-                <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "10px", fontWeight: 700, color: B.muted, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "10px" }}>Recent</div>
-                <div style={{ display: "flex", flexDirection: "column" }}>
-                  {searchHistory.slice(0, 7).map((item, i) => (
-                    <div key={i} onClick={() => { doSearch(item.query, item.query); setView("results"); }} style={{
-                      display: "flex", alignItems: "center", gap: "12px", padding: "11px 10px",
-                      borderRadius: "10px", cursor: "pointer", transition: "background 0.15s",
-                    }}
-                      onMouseEnter={e => e.currentTarget.style.background = B.bg}
-                      onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                    >
-                      <span style={{ fontSize: "13px", color: B.muted }}>O</span>
-                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "14px", color: B.dark, flex: 1, textTransform: "capitalize" }}>{item.query}</span>
-                      <span style={{ fontSize: "11px", color: B.muted }}>return</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div>
-              <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "10px", fontWeight: 700, color: B.muted, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "12px" }}>Trending</div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                {["Jollof Rice","Carbonara","Chicken Tikka","Sushi Rolls","Birria Tacos","Ramen","Egusi Soup","Smash Burger","Pad Thai","Tiramisu","Suya","Croissant","Butter Chicken","Peking Duck"].map(s => (
-                  <button key={s} onClick={() => { setHeroInput(s); doSearch(s,s); setView("results"); }} style={{
-                    background: B.white, border: `0.5px solid ${B.border}`,
-                    borderRadius: "20px", padding: "7px 14px", cursor: "pointer",
-                    fontFamily: "'DM Sans', sans-serif", fontSize: "13px", color: B.dark, transition: "all 0.18s",
-                  }}
-                    onMouseEnter={e => { e.currentTarget.style.background = B.dark; e.currentTarget.style.color = "#fff"; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = B.white; e.currentTarget.style.color = B.dark; }}
-                  >{s}</button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
+      <BottomNav activeTab={tab} onChange={handleTabChange} />
     </div>
   );
 }

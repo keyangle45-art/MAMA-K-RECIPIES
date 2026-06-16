@@ -71,6 +71,30 @@ const STYLES = `
   .filter-chip { background: #fff; border: 1px solid #E8E8E8; border-radius: 20px; padding: 7px 14px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.18s; white-space: nowrap; color: #1A1A1A; }
   .filter-chip:hover, .filter-chip.active { background: #1A1A1A; color: #fff; border-color: #1A1A1A; }
   .filter-chip.active { font-weight: 600; }
+
+  /* ── Responsive Pinterest grid ── */
+  .recipe-grid {
+    display: grid;
+    gap: 12px;
+    padding: 16px;
+    grid-template-columns: repeat(2, 1fr);
+  }
+  @media (min-width: 540px)  { .recipe-grid { grid-template-columns: repeat(3, 1fr); } }
+  @media (min-width: 768px)  { .recipe-grid { grid-template-columns: repeat(4, 1fr); gap: 14px; padding: 20px; } }
+  @media (min-width: 1100px) { .recipe-grid { grid-template-columns: repeat(5, 1fr); gap: 16px; padding: 24px; } }
+
+  /* ── Full-width surface elements ── */
+  .surface-full {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* ── Content max-width centered ── */
+  .content-wrap {
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
+  }
 `;
 
 /* ─── Flame SVG Path ─────────────────────────────────────── */
@@ -192,7 +216,7 @@ const RecipeCard = ({ r, onOpen, bookmarked, onBM, tall = false }) => {
 const FILTERS = ["All","African","Asian","European","American","Healthy","High Protein","Vegetarian","Quick Meals","Desserts"];
 
 const FilterBar = ({ active, onChange }) => (
-  <div style={{
+  <div className="surface-full" style={{
     display: "flex", gap: "8px", overflowX: "auto", scrollbarWidth: "none",
     padding: "12px 16px", background: B.white,
     borderBottom: `1px solid ${B.border}`,
@@ -464,16 +488,15 @@ const HomeFeed = ({ user, isPro, preferences, recentSearches, bookmarks, onBM, o
 
   if (allRecipes.length === 0 && loading) {
     return (
-      <div style={{ padding: "16px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+      <div className="recipe-grid">
         {Array(6).fill(0).map((_, i) => <SkeletonCard key={i} />)}
       </div>
     );
   }
 
   return (
-    <div style={{ padding: "16px 16px 80px" }}>
-      {/* Pinterest-style masonry grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+    <div style={{ paddingBottom: "80px" }}>
+      <div className="recipe-grid">
         {allRecipes.map((r, i) => (
           <div key={`${r.title}-${i}`} style={{ animation: "fadeUp 0.4s ease both", animationDelay: `${(i % 6) * 40}ms` }}
             onMouseEnter={() => startDwell(r.title, r)} onMouseLeave={() => clearDwell(r.title)}
@@ -606,7 +629,7 @@ const SearchView = ({ user, isPro, bookmarks, onBM, onOpen, onShowPaywall, searc
                 <div style={{ fontFamily: "'Poppins', sans-serif", fontSize: "16px" }}>No recipes found</div>
               </div>
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+              <div className="recipe-grid" style={{ padding: 0 }}>
                 {results.map((r, i) => (
                   <RecipeCard key={i} r={r} onOpen={() => onOpen(r)} bookmarked={bookmarks.some(b => b.title === r.title)} onBM={() => onBM(r)} />
                 ))}
@@ -630,7 +653,7 @@ const SavedView = ({ bookmarks, onOpen, onBM }) => (
         <div style={{ fontFamily: "'Poppins', sans-serif", fontSize: "18px", color: B.muted }}>Nothing saved yet</div>
       </div>
     ) : (
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+      <div className="recipe-grid" style={{ padding: 0 }}>
         {bookmarks.map((r, i) => <RecipeCard key={i} r={r} onOpen={() => onOpen(r)} bookmarked={true} onBM={() => onBM(r)} />)}
       </div>
     )}
@@ -839,7 +862,7 @@ export default function App() {
   }, [user]);
 
   return (
-    <div style={{ fontFamily: "'Inter', sans-serif", background: B.bg, minHeight: "100vh", maxWidth: "600px", margin: "0 auto", position: "relative" }}>
+    <div style={{ fontFamily: "'Inter', sans-serif", background: B.bg, minHeight: "100vh", position: "relative" }}>
       {showPaywall && (
         <Paywall
           user={user}
@@ -853,84 +876,102 @@ export default function App() {
       {/* Recipe detail overlay */}
       {selected && (
         <div style={{ position: "fixed", inset: 0, zIndex: 200, overflowY: "auto", background: B.white }}>
-          <DetailView
-            recipe={selected}
-            bookmarked={isBM(selected)}
-            onBM={() => toggleBM(selected)}
-            onBack={closeRecipe}
-            onOpen={r => { closeRecipe(); setTimeout(() => openRecipe(r), 50); }}
-          />
+          <div style={{ maxWidth: "860px", margin: "0 auto" }}>
+            <DetailView
+              recipe={selected}
+              bookmarked={isBM(selected)}
+              onBM={() => toggleBM(selected)}
+              onBack={closeRecipe}
+              onOpen={r => { closeRecipe(); setTimeout(() => openRecipe(r), 50); }}
+            />
+          </div>
         </div>
       )}
 
-      {/* Top bar — only on home and saved */}
+      {/* Top bar — full width, content inside centered */}
       {(tab === "home" || tab === "saved") && (
         <div style={{
           position: "sticky", top: 0, zIndex: 90,
           background: "rgba(255,255,255,0.95)", backdropFilter: "blur(20px)",
           borderBottom: `1px solid ${B.border}`,
-          padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between",
+          width: "100%",
         }}>
-          <Logo height={34} />
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            {!isPro && (
-              <div style={{ background: B.bg, border: `1px solid ${B.border}`, borderRadius: "20px", padding: "4px 10px", fontFamily: "'Inter', sans-serif", fontSize: "11px", fontWeight: 600, color: searchCount >= FREE_LIMIT ? "#DC2626" : B.muted }}>
-                {searchCount >= FREE_LIMIT ? "0 left" : "1 free"}
-              </div>
-            )}
-            {isPro && (
-              <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: "20px", padding: "4px 10px", fontFamily: "'Inter', sans-serif", fontSize: "11px", fontWeight: 700, color: "#16A34A" }}>
-                Pro
-              </div>
-            )}
-            {user ? (
-              <img src={user.photoURL} alt="" onClick={() => handleTabChange("profile")} style={{ width: "30px", height: "30px", borderRadius: "50%", objectFit: "cover", cursor: "pointer", border: `2px solid ${isPro ? B.orange : B.border}` }} />
-            ) : (
-              <button onClick={() => setShowPaywall(true)} className="btn-primary" style={{ padding: "6px 14px", borderRadius: "20px", fontSize: "12px" }}>Sign in</button>
-            )}
+          <div style={{
+            maxWidth: "1400px", margin: "0 auto",
+            padding: "10px 20px", display: "flex", alignItems: "center", justifyContent: "space-between",
+          }}>
+            <Logo height={34} />
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              {!isPro && (
+                <div style={{ background: B.bg, border: `1px solid ${B.border}`, borderRadius: "20px", padding: "4px 12px", fontFamily: "'Inter', sans-serif", fontSize: "11px", fontWeight: 600, color: searchCount >= FREE_LIMIT ? "#DC2626" : B.muted }}>
+                  {searchCount >= FREE_LIMIT ? "0 left" : "1 free"}
+                </div>
+              )}
+              {isPro && (
+                <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: "20px", padding: "4px 12px", fontFamily: "'Inter', sans-serif", fontSize: "11px", fontWeight: 700, color: "#16A34A" }}>
+                  Pro
+                </div>
+              )}
+              {user ? (
+                <img src={user.photoURL} alt="" onClick={() => handleTabChange("profile")} style={{ width: "30px", height: "30px", borderRadius: "50%", objectFit: "cover", cursor: "pointer", border: `2px solid ${isPro ? B.orange : B.border}` }} />
+              ) : (
+                <button onClick={() => setShowPaywall(true)} className="btn-primary" style={{ padding: "7px 16px", borderRadius: "20px", fontSize: "12px" }}>Sign in</button>
+              )}
+            </div>
           </div>
         </div>
       )}
 
-      {/* Tab content */}
+      {/* Tab content — full width */}
       {tab === "home" && (
         <>
           <FilterBar active={activeFilter} onChange={setActiveFilter} />
-          <HomeFeed
-            user={user} isPro={isPro} preferences={preferences}
-            recentSearches={searchHistory} bookmarks={bookmarks}
-            onBM={toggleBM} onOpen={openRecipe}
-            onUpgrade={() => setShowPaywall(true)}
-            activeFilter={activeFilter}
-          />
+          <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
+            <HomeFeed
+              user={user} isPro={isPro} preferences={preferences}
+              recentSearches={searchHistory} bookmarks={bookmarks}
+              onBM={toggleBM} onOpen={openRecipe}
+              onUpgrade={() => setShowPaywall(true)}
+              activeFilter={activeFilter}
+            />
+          </div>
         </>
       )}
 
       {tab === "search" && (
-        <SearchView
-          user={user} isPro={isPro} bookmarks={bookmarks}
-          onBM={toggleBM} onOpen={openRecipe}
-          onShowPaywall={() => setShowPaywall(true)}
-          searchHistory={searchHistory}
-          searchCount={searchCount}
-        />
+        <div style={{ maxWidth: "900px", margin: "0 auto" }}>
+          <SearchView
+            user={user} isPro={isPro} bookmarks={bookmarks}
+            onBM={toggleBM} onOpen={openRecipe}
+            onShowPaywall={() => setShowPaywall(true)}
+            searchHistory={searchHistory}
+            searchCount={searchCount}
+          />
+        </div>
       )}
 
-      {tab === "saved" && <SavedView bookmarks={bookmarks} onOpen={openRecipe} onBM={toggleBM} />}
+      {tab === "saved" && (
+        <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
+          <SavedView bookmarks={bookmarks} onOpen={openRecipe} onBM={toggleBM} />
+        </div>
+      )}
 
       {tab === "profile" && (
-        <ProfileView
-          user={user} isPro={isPro}
-          onSignIn={async () => { try { await signInWithGoogle(); } catch {} }}
-          onSignOut={() => { signOutUser(); setIsPro(false); setSearchCount(0); setBookmarks([]); setSearchHistory([]); setPreferences(null); }}
-          onUpgrade={handleUpgrade}
-          searchCount={searchCount}
-          searchHistory={searchHistory}
-          bookmarks={bookmarks}
-          loadingPayment={loadingPayment}
-        />
+        <div style={{ maxWidth: "600px", margin: "0 auto" }}>
+          <ProfileView
+            user={user} isPro={isPro}
+            onSignIn={async () => { try { await signInWithGoogle(); } catch {} }}
+            onSignOut={() => { signOutUser(); setIsPro(false); setSearchCount(0); setBookmarks([]); setSearchHistory([]); setPreferences(null); }}
+            onUpgrade={handleUpgrade}
+            searchCount={searchCount}
+            searchHistory={searchHistory}
+            bookmarks={bookmarks}
+            loadingPayment={loadingPayment}
+          />
+        </div>
       )}
 
+      {/* Bottom nav — full width */}
       <BottomNav activeTab={tab} onChange={handleTabChange} />
     </div>
   );

@@ -1,8 +1,10 @@
 {
   "functions": {
     "api/recipes.js": { "maxDuration": 30 },
+    "api/feed.js": { "maxDuration": 30 },
     "api/payment.js": { "maxDuration": 15 },
-    "api/webhook.js": { "maxDuration": 15 }
+    "api/webhook.js": { "maxDuration": 15 },
+    "api/seed.js": { "maxDuration": 60 }
   },
   "headers": [
     {

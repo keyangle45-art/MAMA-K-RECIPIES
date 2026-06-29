@@ -1,226 +1,126 @@
 import { callAI } from "./ai-provider.js";
 
-// Feed cache — keyed by preference fingerprint + batch number
-const feedCache = new Map();
-const CACHE_TTL = 1000 * 60 * 20; // 20 mins
+const cache = new Map();
+const rateLimit = new Map();
 
-// Rate limit per IP
-const rateLimits = new Map();
-function isRateLimited(ip) {
+function limited(ip) {
   const now = Date.now();
-  const e = rateLimits.get(ip) || { count: 0, start: now };
-  if (now - e.start > 60000) { rateLimits.set(ip, { count: 1, start: now }); return false; }
-  if (e.count >= 20) return true;
-  e.count++; rateLimits.set(ip, e);
-  return false;
+  const e = rateLimit.get(ip)||{count:0,start:now};
+  if (now-e.start>60000){rateLimit.set(ip,{count:1,start:now});return false;}
+  if (e.count>=20) return true;
+  e.count++;rateLimit.set(ip,e);return false;
 }
 
-/**
- * Generate personalized feed queries based on user behavior
- * This is the intelligence layer — turns preferences into discovery
- */
-function buildFeedQueries(preferences, recentSearches, batch, isPro) {
-  const cuisines = preferences?.cuisines || {};
-  const regions = preferences?.regions || {};
-  const dietary = preferences?.dietary || {};
+const slugify = q => q.toLowerCase().trim().replace(/[^a-z0-9\s-]/g,"").replace(/\s+/g,"-").slice(0,80);
+
+async function getFromFirestore(query) {
+  try {
+    const pid = process.env.FIREBASE_PROJECT_ID||"mama-k-recipies";
+    const key = slugify(query)+"__free";
+    const r = await fetch(`https://firestore.googleapis.com/v1/projects/${pid}/databases/(default)/documents/recipes/${key}`);
+    if (!r.ok) return null;
+    const d = await r.json();
+    const arr = d?.fields?.recipes?.arrayValue?.values;
+    if (!arr?.length) return null;
+    return arr.map(v => {
+      const f=v.mapValue?.fields||{};const out={};
+      for(const[k,fv] of Object.entries(f)){
+        if(fv.stringValue!==undefined)out[k]=fv.stringValue;
+        else if(fv.integerValue!==undefined)out[k]=parseInt(fv.integerValue);
+        else if(fv.arrayValue)out[k]=fv.arrayValue.values?.map(av=>av.stringValue||"")||[];
+        else if(fv.nullValue!==undefined)out[k]=null;
+      }
+      return out;
+    });
+  } catch { return null; }
+}
+
+function buildQuery(prefs, recent, batch) {
+  const cuisines = Object.entries(prefs?.cuisines||{}).sort((a,b)=>b[1]-a[1]).map(([k])=>k.replace(/_/g," "));
+  const regions = Object.entries(prefs?.regions||{}).sort((a,b)=>b[1]-a[1]).map(([k])=>k.replace(/_/g," "));
+  const isHealthy = (prefs?.dietary?.healthy||0) > 2;
+  const isAfrican = (prefs?.regions?.west_african||0)+(prefs?.regions?.nigeria||0) > 3;
   const hour = new Date().getHours();
-  const timeSlot = hour < 11 ? "breakfast" : hour < 15 ? "lunch" : hour < 20 ? "dinner" : "late night snack";
+  const meal = hour<11?"breakfast":hour<15?"lunch":hour<20?"dinner":"late night snack";
 
-  // Sort cuisines/regions by score
-  const topCuisines = Object.entries(cuisines).sort((a, b) => b[1] - a[1]).map(([k]) => k.replace(/_/g, " "));
-  const topRegions = Object.entries(regions).sort((a, b) => b[1] - a[1]).map(([k]) => k.replace(/_/g, " "));
-  const isHealthy = (dietary.healthy || 0) > 2;
-  const isAfricanFan = (regions.west_african || 0) + (regions.nigeria || 0) > 3;
+  const queries = [
+    cuisines[0] ? `popular ${cuisines[0]} dishes` : "popular world dishes",
+    cuisines[0] ? `${cuisines[0]} ${meal} recipes` : `quick ${meal} recipes`,
+    isAfrican ? "West African street food and snacks" : cuisines[0] ? `traditional ${cuisines[0]} comfort food` : "comfort food world",
+    regions[1] ? `popular ${regions[1]} dishes` : "trending global recipes",
+    isHealthy ? `healthy ${cuisines[0]||"international"} meals under 400 calories` : `rich ${cuisines[0]||"global"} dishes`,
+    isAfrican ? "Nigerian party celebration food" : cuisines[0] ? `authentic ${cuisines[0]} home cooking` : "authentic home cooking",
+    ["Japanese street food","Moroccan tagine","Brazilian churrasco","Lebanese mezze","Korean BBQ"][Math.floor(Math.random()*5)],
+    cuisines[1] ? `best ${cuisines[1]} recipes` : "hidden gem world cuisines",
+    `trending ${cuisines[0]||"global"} recipes`,
+    isAfrican ? "African fusion modern recipes" : `modern fusion ${cuisines[0]||"world cuisine"}`,
+  ];
 
-  const batchQueries = {
-    // Batch 0 — core interests
-    0: topCuisines[0]
-      ? `popular ${topCuisines[0]} dishes`
-      : "popular world dishes",
-
-    // Batch 1 — time-aware
-    1: topCuisines[0]
-      ? `${topCuisines[0]} ${timeSlot} recipes`
-      : `quick ${timeSlot} recipes`,
-
-    // Batch 2 — depth expansion (adjacent to top interest)
-    2: isAfricanFan
-      ? "West African street food and snacks"
-      : topCuisines[0]
-        ? `traditional ${topCuisines[0]} comfort food`
-        : "comfort food from around the world",
-
-    // Batch 3 — discovery (similar but new)
-    3: topRegions[1]
-      ? `popular ${topRegions[1]} dishes`
-      : "trending global recipes 2025",
-
-    // Batch 4 — dietary alignment
-    4: isHealthy
-      ? `healthy ${topCuisines[0] || "international"} meals under 400 calories`
-      : `rich flavourful ${topCuisines[0] || "global"} dishes`,
-
-    // Batch 5 — deep dive into top interest
-    5: isAfricanFan
-      ? "Nigerian party and celebration food"
-      : topCuisines[0]
-        ? `authentic home cooking ${topCuisines[0]}`
-        : "authentic home cooking from top cuisines",
-
-    // Batch 6 — surprise discovery
-    6: ["Japanese street food", "Moroccan tagine variations", "Brazilian churrasco", "Lebanese mezze", "Korean BBQ sides"][Math.floor(Math.random() * 5)],
-
-    // Batch 7+ — rotate through interests deeper
-    7: topCuisines[1]
-      ? `best ${topCuisines[1]} recipes`
-      : "hidden gem recipes from lesser known cuisines",
-
-    // Batch 8 — trending + personal mix
-    8: `trending ${topCuisines[0] || "global"} recipes this week`,
-
-    // Batch 9 — seasonal/occasion
-    9: isAfricanFan
-      ? "African fusion modern recipes"
-      : `modern fusion recipes inspired by ${topCuisines[0] || "world cuisines"}`,
-  };
-
-  // For batches beyond defined ones, cycle through variations
-  const batchKey = batch % 10;
-  let baseQuery = batchQueries[batchKey] || `popular ${topCuisines[Math.floor(Math.random() * Math.max(1, topCuisines.length))] || "world"} dishes`;
-
-  // Inject recent searches for relevance continuity
-  if (recentSearches?.length > 0 && batch % 3 === 0) {
-    const recent = recentSearches[Math.floor(Math.random() * Math.min(3, recentSearches.length))];
-    if (recent?.query) {
-      baseQuery = `dishes similar to ${recent.query}`;
-    }
+  // Every 3rd batch use recent search for relevance
+  if (recent?.length && batch%3===0) {
+    const r = recent[Math.floor(Math.random()*Math.min(3,recent.length))];
+    if (r?.query) return `dishes similar to ${r.query}`;
   }
 
-  return baseQuery;
+  return queries[batch%queries.length] || "popular world dishes";
 }
 
 export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  if (req.method === "OPTIONS") return res.status(200).end();
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  res.setHeader("Access-Control-Allow-Origin","*");
+  res.setHeader("Access-Control-Allow-Methods","POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers","Content-Type");
+  if (req.method==="OPTIONS") return res.status(200).end();
+  if (req.method!=="POST") return res.status(405).json({error:"Method not allowed"});
 
-  const ip = req.headers["x-forwarded-for"]?.split(",")[0] || "unknown";
-  if (isRateLimited(ip)) return res.status(429).json({ error: "Too many requests" });
+  const ip = req.headers["x-forwarded-for"]?.split(",")[0]||"unknown";
+  if (limited(ip)) return res.status(429).json({error:"Too many requests"});
 
-  const { preferences, recentSearches, batch = 0, isPro = false, uid, mode } = req.body || {};
+  const { preferences, recentSearches, batch=0, isPro=false } = req.body||{};
+  const batchNum = Number(batch);
+  const limit = isPro ? 999 : 5;
 
-  // Trending mode — return globally popular dishes
-  if (mode === "trending" || batch === 99) {
-    const trendingCacheKey = "trending__global";
-    const cached = feedCache.get(trendingCacheKey);
-    if (cached && Date.now() - cached.time < CACHE_TTL) {
-      return res.status(200).json({ recipes: cached.data, query: "trending", batch: 99 });
-    }
-    try {
-      const trendingQueries = [
-        "Nigerian Party Jollof Rice authentic",
-        "Viral Marry Me Chicken",
-        "Japanese Tonkotsu Ramen",
-        "Mexican Birria Tacos",
-        "Italian Carbonara authentic",
-        "West African Suya spiced meat",
-        "Korean Beef Bulgogi",
-        "Moroccan Lamb Tagine",
-      ];
-      const results = await Promise.all(
-        trendingQueries.slice(0, 4).map(async q => {
-          const text = await callAI(`One recipe for: "${q}". JSON object: {"title":string,"emoji":emoji,"tagline":max 10 words,"time":string,"difficulty":"Easy"|"Medium"|"Advanced","servings":number,"calories":number,"cuisine":string,"region":string,"tags":[2 strings],"ingredients":[6-8 strings],"steps":[4-5 strings]}. ONLY raw JSON object.`, 600);
-          try { return JSON.parse(text.replace(/^```json\s*/i,"").replace(/```\s*$/i,"").trim()); }
-          catch { return null; }
-        })
-      );
-      const trending = results.filter(Boolean);
-
-      // Add Pexels images
-      const pexelsKey = process.env.PEXELS_API_KEY;
-      const withImages = await Promise.all(
-        trending.map(async r => {
-          try {
-            const q = encodeURIComponent(`${r.title} food dish`);
-            const pRes = await fetch(`https://api.pexels.com/v1/search?query=${q}&per_page=1&orientation=landscape`, { headers: { Authorization: pexelsKey } });
-            const pData = await pRes.json();
-            const photo = pData?.photos?.[0];
-            return { ...r, imageSmall: photo?.src?.tiny, image: photo?.src?.medium, imageLarge: photo?.src?.large2x, photographer: photo?.photographer };
-          } catch { return r; }
-        })
-      );
-
-      feedCache.set(trendingCacheKey, { data: withImages, time: Date.now() });
-      return res.status(200).json({ recipes: withImages, query: "trending", batch: 99 });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
+  if (batchNum >= limit) {
+    return res.status(200).json({ recipes:[], done:true, upgradePrompt:!isPro });
   }
 
-  // Free users get 5 feed batches per session, Pro gets unlimited
-  const batchLimit = isPro ? 999 : 5;
-  if (batch >= batchLimit) {
-    return res.status(200).json({
-      recipes: [],
-      query: "",
-      batch,
-      done: true,
-      upgradePrompt: !isPro,
-    });
+  const query = buildQuery(preferences, recentSearches, batchNum);
+  const cacheKey = `feed__${query}__${isPro}`;
+
+  // Memory cache
+  const hot = cache.get(cacheKey);
+  if (hot && Date.now()-hot.time < 1800000) {
+    return res.status(200).json({ recipes:hot.data, query, batch:batchNum, cached:true });
   }
 
-  // Build the personalized query
-  const feedQuery = buildFeedQueries(preferences, recentSearches, batch, isPro);
-
-  // Cache check
-  const cacheKey = `feed__${feedQuery}__${isPro}`;
-  const cached = feedCache.get(cacheKey);
-  if (cached && Date.now() - cached.time < CACHE_TTL) {
-    return res.status(200).json({ recipes: cached.data, query: feedQuery, batch, cached: true });
+  // Firestore database cache — serve existing recipes first
+  const dbRecipes = await getFromFirestore(query);
+  if (dbRecipes?.length) {
+    cache.set(cacheKey, { data:dbRecipes, time:Date.now() });
+    return res.status(200).json({ recipes:dbRecipes, query, batch:batchNum, cached:true });
   }
 
+  // Generate with AI only on cache miss
   const count = isPro ? 6 : 4;
-
   try {
-    const prompt = `Expert culinary database. Return ONLY a valid JSON array of exactly ${count} diverse recipes for: "${feedQuery}".
-Each: {"title":string,"emoji":emoji,"tagline":max 10 words no hyphens,"time":string,"difficulty":"Easy"|"Medium"|"Advanced","servings":number,"calories":number,"cuisine":string,"region":string,"tags":[2 strings],"ingredients":[6-10 strings],"steps":[4-6 strings]}.
-Make recipes feel authentic, varied in difficulty. ONLY raw JSON array.`;
-
+    const prompt = `Culinary database. Return ONLY valid JSON array of exactly ${count} diverse recipes for: "${query}". Each: {"title":string,"emoji":emoji,"tagline":max 10 words,"time":string,"difficulty":"Easy"|"Medium"|"Advanced","servings":number,"calories":number,"cuisine":string,"region":string,"tags":[2 strings],"ingredients":[6-10 strings],"steps":[4-6 strings]}. ONLY raw JSON array.`;
     const text = await callAI(prompt, 1800);
-    const clean = text.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
-    let recipes = JSON.parse(clean);
+    let recipes = JSON.parse(text.replace(/^```json\s*/i,"").replace(/```\s*$/i,"").trim());
     if (!Array.isArray(recipes)) throw new Error("Not array");
 
-    // Fetch images
     const pexelsKey = process.env.PEXELS_API_KEY;
-    const withImages = await Promise.all(
-      recipes.map(async (r) => {
-        try {
-          const q = encodeURIComponent(`${r.title} food dish plated`);
-          const pRes = await fetch(
-            `https://api.pexels.com/v1/search?query=${q}&per_page=1&orientation=landscape`,
-            { headers: { Authorization: pexelsKey } }
-          );
-          const pData = await pRes.json();
-          const photo = pData?.photos?.[0];
-          if (!photo) return { ...r, image: null };
-          return {
-            ...r,
-            imageSmall: photo.src.tiny,
-            image: photo.src.medium,
-            imageLarge: photo.src.large2x,
-            photographer: photo.photographer,
-          };
-        } catch { return { ...r, image: null }; }
-      })
-    );
+    const withImages = await Promise.all(recipes.map(async r => {
+      try {
+        const q = encodeURIComponent(`${r.title} food dish plated`);
+        const pRes = await fetch(`https://api.pexels.com/v1/search?query=${q}&per_page=1&orientation=landscape`,{headers:{Authorization:pexelsKey}});
+        const pData = await pRes.json();
+        const photo = pData?.photos?.[0];
+        return photo ? {...r,imageSmall:photo.src.tiny,image:photo.src.medium,imageLarge:photo.src.large2x,photographer:photo.photographer} : {...r,image:null};
+      } catch { return {...r,image:null}; }
+    }));
 
-    feedCache.set(cacheKey, { data: withImages, time: Date.now() });
-    return res.status(200).json({ recipes: withImages, query: feedQuery, batch, done: false });
-
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
+    cache.set(cacheKey, { data:withImages, time:Date.now() });
+    return res.status(200).json({ recipes:withImages, query, batch:batchNum, done:false });
+  } catch(err) {
+    return res.status(500).json({ error:err.message });
   }
 }

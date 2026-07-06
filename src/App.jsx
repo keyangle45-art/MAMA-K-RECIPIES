@@ -137,7 +137,7 @@ const SkeletonCard = ({ tall = false }) => (
 
 /* ─── Recipe Card ────────────────────────────────────────── */
 const RecipeCard = ({ r, onOpen, bookmarked, onBM, tall = false }) => {
-  const [imgLoaded, setImgLoaded] = useState(false);
+  const [fullLoaded, setFullLoaded] = useState(false);
   const h = tall ? "220px" : "180px";
 
   return (
@@ -150,18 +150,14 @@ const RecipeCard = ({ r, onOpen, bookmarked, onBM, tall = false }) => {
       <div style={{ height: h, position: "relative", overflow: "hidden", background: "#F0EDE8" }}>
         {r.image ? (
           <>
-            <div style={{
-              position: "absolute", inset: 0,
-              backgroundImage: `url(${r.imageSmall || r.image})`,
-              backgroundSize: "cover", backgroundPosition: "center",
-              filter: imgLoaded ? "none" : "blur(10px)",
-              transform: "scale(1.05)", transition: "filter 0.4s ease",
-            }} />
+            <img src={r.imageSmall || r.image} alt="" aria-hidden="true"
+              style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover", filter:"blur(4px)", transform:"scale(1.04)" }}
+            />
             <img src={r.image} alt={r.title} loading="lazy" decoding="async"
-              onLoad={() => setImgLoaded(true)}
+              onLoad={() => setFullLoaded(true)}
               style={{
-                position: "absolute", inset: 0, width: "100%", height: "100%",
-                objectFit: "cover", opacity: imgLoaded ? 1 : 0, transition: "opacity 0.35s ease",
+                position:"absolute", inset:0, width:"100%", height:"100%",
+                objectFit:"cover", opacity: fullLoaded ? 1 : 0, transition:"opacity 0.25s ease",
               }}
             />
           </>
@@ -176,7 +172,7 @@ const RecipeCard = ({ r, onOpen, bookmarked, onBM, tall = false }) => {
         {r.region && (
           <div style={{
             position: "absolute", bottom: "10px", left: "10px",
-            background: "rgba(255,255,255,0.18)", backdropFilter: "blur(8px)",
+            background: "rgba(0,0,0,0.45)",
             color: "#fff", fontSize: "10px", fontWeight: 600,
             padding: "3px 8px", borderRadius: "6px", letterSpacing: "0.04em",
           }}>{r.region}</div>
@@ -184,7 +180,7 @@ const RecipeCard = ({ r, onOpen, bookmarked, onBM, tall = false }) => {
         {/* Bookmark */}
         <button onClick={e => { e.stopPropagation(); onBM(); }} style={{
           position: "absolute", top: "8px", right: "8px",
-          background: "rgba(255,255,255,0.9)", backdropFilter: "blur(8px)",
+          background: "rgba(255,255,255,0.88)",
           border: "none", borderRadius: "50%", width: "30px", height: "30px",
           cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
           fontSize: "13px", color: bookmarked ? B.orange : "#999",
@@ -661,69 +657,157 @@ const SavedView = ({ bookmarks, onOpen, onBM }) => (
 );
 
 /* ─── Profile View ───────────────────────────────────────── */
-const ProfileView = ({ user, isPro, onSignIn, onSignOut, onUpgrade, searchCount, searchHistory, bookmarks, loadingPayment }) => (
-  <div style={{ padding: "20px 16px 80px", background: B.white, minHeight: "100vh" }}>
+const ProfileView = ({ user, isPro, onSignIn, onSignOut, onUpgrade, searchCount, searchHistory, bookmarks, loadingPayment, preferences, onOpen }) => {
+  // Derive top cuisines from preferences
+  const topCuisines = Object.entries(preferences?.regions || {})
+    .sort((a,b) => b[1]-a[1]).slice(0,3)
+    .map(([k]) => k.replace(/_/g," ").replace(/\b\w/g, l => l.toUpperCase()));
+
+  const topDiet = Object.entries(preferences?.dietary || {})
+    .sort((a,b) => b[1]-a[1]).slice(0,2)
+    .map(([k]) => k.charAt(0).toUpperCase() + k.slice(1));
+
+  const streak = Math.min(searchHistory.length, 7);
+  const tastePrimary = topCuisines[0] || "Building...";
+
+  return (
+  <div style={{ background: B.white, minHeight: "100vh", paddingBottom: "80px" }}>
     {user ? (
       <>
-        {/* User card */}
-        <div style={{ display: "flex", alignItems: "center", gap: "14px", padding: "16px", background: B.bg, borderRadius: "16px", marginBottom: "20px" }}>
-          <img src={user.photoURL} alt={user.displayName} style={{ width: "52px", height: "52px", borderRadius: "50%", objectFit: "cover", border: `2px solid ${isPro ? B.orange : B.border}` }} />
-          <div>
-            <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "16px", color: B.dark }}>{user.displayName}</div>
-            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted }}>{user.email}</div>
-            <div style={{ marginTop: "4px" }}>
-              <span style={{ background: isPro ? "#F0FDF4" : B.bg, color: isPro ? "#16A34A" : B.muted, border: `1px solid ${isPro ? "#BBF7D0" : B.border}`, borderRadius: "20px", padding: "2px 10px", fontSize: "11px", fontWeight: 700 }}>
-                {isPro ? "✓ Pro" : "Free Plan"}
-              </span>
+        {/* Header */}
+        <div style={{ padding: "20px 16px 0" }}>
+          <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "22px", color: B.dark, marginBottom: "16px" }}>My Kitchen</div>
+
+          {/* User card */}
+          <div style={{ display: "flex", alignItems: "center", gap: "14px", padding: "14px 16px", background: B.bg, borderRadius: "16px", marginBottom: "16px" }}>
+            <img src={user.photoURL} alt={user.displayName} style={{ width: "48px", height: "48px", borderRadius: "50%", objectFit: "cover", border: `2px solid ${isPro ? B.orange : B.border}`, flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "15px", color: B.dark, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user.displayName}</div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted }}>{user.email}</div>
             </div>
+            <span style={{ background: isPro ? "#F0FDF4" : B.bg, color: isPro ? "#16A34A" : B.muted, border: `1px solid ${isPro ? "#BBF7D0" : B.border}`, borderRadius: "20px", padding: "3px 12px", fontSize: "11px", fontWeight: 700, flexShrink: 0 }}>
+              {isPro ? "✓ Pro" : "Free"}
+            </span>
           </div>
+
+          {/* Stats — meaningful ones */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "20px" }}>
+            {[
+              ["❤️", bookmarks.length, "Saved"],
+              ["🧠", tastePrimary, "Top Taste"],
+              ["🔥", `${streak} day${streak !== 1 ? "s" : ""}`, "Streak"],
+            ].map(([icon, val, label]) => (
+              <div key={label} style={{ background: B.bg, borderRadius: "14px", padding: "14px 8px", textAlign: "center" }}>
+                <div style={{ fontSize: "18px", marginBottom: "4px" }}>{icon}</div>
+                <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: val.toString().length > 6 ? "11px" : "14px", color: B.dark, lineHeight: 1.2 }}>{val}</div>
+                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", color: B.muted, marginTop: "2px" }}>{label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Taste Profile */}
+          {(topCuisines.length > 0 || topDiet.length > 0) && (
+            <div style={{ background: B.dark, borderRadius: "16px", padding: "18px", marginBottom: "16px" }}>
+              <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "14px", color: "#fff", marginBottom: "12px" }}>Your Taste Profile</div>
+              {topCuisines.length > 0 && (
+                <div style={{ marginBottom: "10px" }}>
+                  <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "6px" }}>Favourite Cuisines</div>
+                  <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                    {topCuisines.map(c => (
+                      <span key={c} style={{ background: "rgba(255,255,255,0.1)", color: "#fff", borderRadius: "20px", padding: "4px 12px", fontSize: "12px", fontWeight: 500 }}>{c}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {topDiet.length > 0 && (
+                <div>
+                  <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "6px" }}>Dietary Preferences</div>
+                  <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                    {topDiet.map(d => (
+                      <span key={d} style={{ background: `${B.orange}33`, color: B.orange, borderRadius: "20px", padding: "4px 12px", fontSize: "12px", fontWeight: 500 }}>{d}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {topCuisines.length === 0 && (
+                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.4)", textAlign: "center", padding: "8px 0" }}>
+                  Search and save recipes to build your taste profile
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Recently saved */}
+          {bookmarks.length > 0 && (
+            <div style={{ marginBottom: "16px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "15px", color: B.dark }}>Recently Saved</div>
+                <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.orange, fontWeight: 600 }}>{bookmarks.length} recipes</span>
+              </div>
+              <div style={{ display: "flex", gap: "10px", overflowX: "auto", scrollbarWidth: "none", paddingBottom: "4px" }}>
+                {bookmarks.slice(0, 6).map((r, i) => (
+                  <div key={i} onClick={() => onOpen(r)} style={{ flexShrink: 0, width: "110px", cursor: "pointer" }}>
+                    <div style={{ height: "80px", borderRadius: "10px", overflow: "hidden", background: "#F0EDE8", marginBottom: "6px", position: "relative" }}>
+                      {r.image ? <img src={r.imageSmall || r.image} alt={r.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px" }}>{r.emoji}</div>}
+                    </div>
+                    <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", fontWeight: 500, color: B.dark, lineHeight: 1.3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{r.title}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Pro upgrade card */}
+          {!isPro && (
+            <div onClick={onUpgrade} style={{ background: B.dark, borderRadius: "16px", padding: "20px", cursor: "pointer", marginBottom: "16px", transition: "opacity 0.2s" }}
+              onMouseEnter={e => e.currentTarget.style.opacity = "0.92"}
+              onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+            >
+              <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "16px", color: "#fff", marginBottom: "10px" }}>Unlock Pro</div>
+              {["Unlimited AI searches", "6 recipes per search", "Full taste personalisation", "Saved collections across devices", "Priority support"].map(f => (
+                <div key={f} style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+                  <div style={{ width: "16px", height: "16px", borderRadius: "50%", background: `${B.orange}33`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <span style={{ color: B.orange, fontSize: "10px", fontWeight: 700 }}>✓</span>
+                  </div>
+                  <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.75)" }}>{f}</span>
+                </div>
+              ))}
+              <div style={{ marginTop: "14px", display: "inline-block", background: B.orange, color: "#fff", borderRadius: "10px", padding: "10px 20px", fontSize: "14px", fontWeight: 700 }}>
+                {loadingPayment ? "Redirecting..." : "$4.99 / month"}
+              </div>
+            </div>
+          )}
+
+          {/* Settings menu */}
+          <div style={{ borderRadius: "16px", overflow: "hidden", border: `1px solid ${B.border}`, marginBottom: "16px" }}>
+            {[
+              { label: "Help & Support", sub: "support@keyangle.tech", action: () => window.open("mailto:support@keyangle.tech") },
+              { label: "Privacy Policy", sub: "How we use your data", action: () => {} },
+              { label: "Delete Account", sub: "Permanently remove your data", action: () => {}, danger: true },
+            ].map((item, i, arr) => (
+              <div key={item.label} onClick={item.action} style={{ display: "flex", alignItems: "center", gap: "14px", padding: "14px 16px", borderBottom: i < arr.length-1 ? `1px solid ${B.border}` : "none", cursor: "pointer", background: B.white, transition: "background 0.15s" }}
+                onMouseEnter={e => e.currentTarget.style.background = B.bg}
+                onMouseLeave={e => e.currentTarget.style.background = B.white}
+              >
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "14px", fontWeight: 500, color: item.danger ? "#DC2626" : B.dark }}>{item.label}</div>
+                  <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted }}>{item.sub}</div>
+                </div>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+              </div>
+            ))}
+          </div>
+
+          <button onClick={onSignOut} style={{ width: "100%", padding: "14px", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "12px", cursor: "pointer", fontFamily: "'Inter', sans-serif", fontSize: "14px", fontWeight: 600, color: "#DC2626" }}>
+            Sign Out
+          </button>
         </div>
-
-        {/* Stats */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "24px" }}>
-          {[["Saved", bookmarks.length], ["Searches", searchHistory.length], ["Today", `${searchCount}/${FREE_LIMIT}`]].map(([label, val]) => (
-            <div key={label} style={{ background: B.bg, borderRadius: "12px", padding: "14px 10px", textAlign: "center" }}>
-              <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "18px", color: B.dark }}>{val}</div>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", color: B.muted, marginTop: "2px" }}>{label}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Upgrade if free */}
-        {!isPro && (
-          <div onClick={onUpgrade} style={{ background: B.dark, borderRadius: "16px", padding: "20px", cursor: "pointer", marginBottom: "20px", transition: "opacity 0.2s" }}
-            onMouseEnter={e => e.currentTarget.style.opacity = "0.92"}
-            onMouseLeave={e => e.currentTarget.style.opacity = "1"}
-          >
-            <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "16px", color: "#fff", marginBottom: "4px" }}>Upgrade to Pro</div>
-            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.5)", marginBottom: "14px" }}>Unlimited searches, 6 recipes per search, full personalisation</div>
-            <div style={{ display: "inline-block", background: B.orange, color: "#fff", borderRadius: "8px", padding: "8px 16px", fontSize: "13px", fontWeight: 600 }}>
-              {loadingPayment ? "Redirecting..." : "$4.99 / month"}
-            </div>
-          </div>
-        )}
-
-        {/* Menu items */}
-        {[["⚙️","Settings","Coming soon"],["❓","Help & Support","support@keyangle.tech"],["📊","Search History",`${searchHistory.length} searches`]].map(([icon,label,sub]) => (
-          <div key={label} style={{ display: "flex", alignItems: "center", gap: "14px", padding: "16px 4px", borderBottom: `1px solid ${B.border}`, cursor: "pointer" }}>
-            <span style={{ fontSize: "18px", width: "28px", textAlign: "center" }}>{icon}</span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "14px", fontWeight: 500, color: B.dark }}>{label}</div>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted }}>{sub}</div>
-            </div>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-          </div>
-        ))}
-
-        <button onClick={onSignOut} style={{ width: "100%", marginTop: "24px", padding: "14px", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "12px", cursor: "pointer", fontFamily: "'Inter', sans-serif", fontSize: "14px", fontWeight: 600, color: "#DC2626", transition: "all 0.18s" }}>
-          Sign Out
-        </button>
       </>
     ) : (
-      <div style={{ textAlign: "center", padding: "60px 0" }}>
+      <div style={{ textAlign: "center", padding: "60px 16px" }}>
         <Logo height={44} />
-        <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "22px", color: B.dark, margin: "24px 0 8px" }}>Join Mama K</div>
-        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "14px", color: B.muted, lineHeight: 1.6, marginBottom: "28px" }}>Sign in to personalise your feed and save your favourite recipes.</div>
+        <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "22px", color: B.dark, margin: "24px 0 8px" }}>Your Kitchen Awaits</div>
+        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "14px", color: B.muted, lineHeight: 1.6, marginBottom: "28px" }}>Sign in to personalise your feed, track your taste, and save your favourite recipes.</div>
         <button onClick={onSignIn} className="btn-primary" style={{ width: "100%", padding: "14px", borderRadius: "14px", fontSize: "15px", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px" }}>
           <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
           Continue with Google
@@ -731,7 +815,8 @@ const ProfileView = ({ user, isPro, onSignIn, onSignOut, onUpgrade, searchCount,
       </div>
     )}
   </div>
-);
+  );
+};
 
 /* ─── Bottom Navigation ──────────────────────────────────── */
 const BottomNav = ({ activeTab, onChange }) => {
@@ -967,6 +1052,8 @@ export default function App() {
             searchHistory={searchHistory}
             bookmarks={bookmarks}
             loadingPayment={loadingPayment}
+            preferences={preferences}
+            onOpen={openRecipe}
           />
         </div>
       )}

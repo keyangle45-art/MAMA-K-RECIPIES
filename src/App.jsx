@@ -35,11 +35,11 @@ const callAPI = async (query, isPro = false) => {
   return recipes;
 };
 
-const callFeed = async (preferences, recentSearches, batch, isPro) => {
+const callFeed = async (preferences, recentSearches, batch, isPro, filter) => {
   const res = await fetch("/api/feed", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ preferences, recentSearches, batch, isPro }),
+    body: JSON.stringify({ preferences, recentSearches, batch, isPro, filter }),
   });
   return res.json();
 };
@@ -89,11 +89,9 @@ const STYLES = `
     max-width: 100%;
   }
 
-  /* ── Content max-width centered ── */
-  .content-wrap {
-    max-width: 1400px;
-    margin: 0 auto;
-    width: 100%;
+  /* Profile desktop 2-col */
+  @media (min-width: 768px) {
+    .profile-grid { grid-template-columns: 340px 1fr !important; align-items: start; }
   }
 `;
 
@@ -209,7 +207,11 @@ const RecipeCard = ({ r, onOpen, bookmarked, onBM, tall = false }) => {
 };
 
 /* ─── Filter Chips ───────────────────────────────────────── */
-const FILTERS = ["All","African","Asian","European","American","Healthy","High Protein","Vegetarian","Quick Meals","Desserts"];
+const FILTERS = [
+  "What to Eat", "African", "Asian", "European", "American",
+  "Healthy", "High Protein", "Vegetarian", "Quick Meals",
+  "Desserts", "Drinks", "Breakfast", "Seafood"
+];
 
 const FilterBar = ({ active, onChange }) => (
   <div className="surface-full" style={{
@@ -351,6 +353,21 @@ const DetailView = ({ recipe, bookmarked, onBM, onBack, onOpen }) => {
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: "15px", color: bookmarked ? B.orange : B.muted, transition: "all 0.18s",
             }}>🔖</button>
+            <button onClick={() => {
+              const text = `${recipe.title} — found on Mama K Recipes 🍽️\nhttps://recipes.keyangle.tech`;
+              if (navigator.share) navigator.share({ title: recipe.title, text, url: "https://recipes.keyangle.tech" });
+              else navigator.clipboard?.writeText(text).then(() => alert("Link copied!"));
+            }} style={{
+              background: B.bg, border: `1px solid ${B.border}`,
+              borderRadius: "50%", width: "38px", height: "38px", cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              color: B.muted, transition: "all 0.18s",
+            }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+              </svg>
+            </button>
           </div>
         </div>
 
@@ -452,7 +469,7 @@ const HomeFeed = ({ user, isPro, preferences, recentSearches, bookmarks, onBM, o
     loadingRef.current = true;
     setLoading(true);
     try {
-      const data = await callFeed(preferences, recentSearches, batch, isPro);
+      const data = await callFeed(preferences, recentSearches, batch, isPro, activeFilter);
       if (data.done) { setDone(true); if (!isPro) setShowUpgrade(true); }
       else if (data.recipes?.length > 0) {
         setBatches(prev => [...prev, { id: batch, recipes: data.recipes, query: data.query }]);
@@ -552,15 +569,36 @@ const SearchView = ({ user, isPro, bookmarks, onBM, onOpen, onShowPaywall, searc
 
   useEffect(() => { setTimeout(() => inputRef.current?.focus(), 100); }, []);
 
-  const doSearch = async () => {
-    if (!query.trim()) return;
+  const doSearch = async (overrideQuery) => {
+    const raw = overrideQuery || query;
+    if (!raw.trim()) return;
     if (!user) { onShowPaywall(); return; }
     if (!isPro && searchCount >= FREE_LIMIT) { onShowPaywall(); return; }
+
+    // Normalize query
+    const normalized = raw.trim().toLowerCase()
+      .replace(/[^\w\s]/g, "")
+      .replace(/\s+/g, " ");
+
     setLoading(true);
     setSearched(true);
-    const r = await callAPI(query, isPro);
-    setResults(r);
+
+    // Try up to 2 times if first returns empty
+    let results = [];
+    for (let attempt = 0; attempt < 2; attempt++) {
+      results = await callAPI(attempt === 0 ? normalized : raw.trim(), isPro);
+      if (results.length > 0) break;
+      await new Promise(r => setTimeout(r, 500));
+    }
+
+    setResults(results);
     setLoading(false);
+
+    // Log search history
+    if (user?.uid && results.length > 0) {
+      logSearchHistory(user.uid, normalized);
+      updatePreferenceProfile(user.uid, { query: normalized });
+    }
   };
 
   return (
@@ -585,7 +623,7 @@ const SearchView = ({ user, isPro, bookmarks, onBM, onOpen, onShowPaywall, searc
               <div style={{ marginBottom: "24px" }}>
                 <div style={{ fontFamily: "'Poppins', sans-serif", fontSize: "12px", fontWeight: 700, color: B.muted, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "10px" }}>Recent</div>
                 {searchHistory.slice(0, 6).map((item, i) => (
-                  <div key={i} onClick={() => { setQuery(item.query); doSearch(); }} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "11px 8px", borderRadius: "10px", cursor: "pointer", transition: "background 0.15s" }}
+                  <div key={i} onClick={() => { setQuery(item.query); doSearch(item.query); }} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "11px 8px", borderRadius: "10px", cursor: "pointer", transition: "background 0.15s" }}
                     onMouseEnter={e => e.currentTarget.style.background = B.bg}
                     onMouseLeave={e => e.currentTarget.style.background = "transparent"}
                   >
@@ -599,7 +637,7 @@ const SearchView = ({ user, isPro, bookmarks, onBM, onOpen, onShowPaywall, searc
               <div style={{ fontFamily: "'Poppins', sans-serif", fontSize: "12px", fontWeight: 700, color: B.muted, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "10px" }}>Trending</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
                 {["Jollof Rice","Carbonara","Chicken Tikka","Birria Tacos","Ramen","Egusi Soup","Smash Burger","Pad Thai","Tiramisu","Suya","Butter Chicken","Peking Duck","Shakshuka","Ceviche"].map(s => (
-                  <button key={s} onClick={() => { setQuery(s); setTimeout(doSearch, 50); }} style={{ background: B.bg, border: `1px solid ${B.border}`, borderRadius: "20px", padding: "7px 14px", cursor: "pointer", fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.dark, transition: "all 0.18s" }}
+                  <button key={s} onClick={() => { setQuery(s); setTimeout(() => doSearch(s), 50); }} style={{ background: B.bg, border: `1px solid ${B.border}`, borderRadius: "20px", padding: "7px 14px", cursor: "pointer", fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.dark, transition: "all 0.18s" }}
                     onMouseEnter={e => { e.currentTarget.style.background = B.dark; e.currentTarget.style.color = "#fff"; }}
                     onMouseLeave={e => { e.currentTarget.style.background = B.bg; e.currentTarget.style.color = B.dark; }}
                   >{s}</button>
@@ -657,7 +695,7 @@ const SavedView = ({ bookmarks, onOpen, onBM }) => (
 );
 
 /* ─── Profile View ───────────────────────────────────────── */
-const ProfileView = ({ user, isPro, onSignIn, onSignOut, onUpgrade, searchCount, searchHistory, bookmarks, loadingPayment, preferences, onOpen }) => {
+const ProfileView = ({ user, isPro, onSignIn, onSignOut, onUpgrade, searchCount, searchHistory, bookmarks, loadingPayment, preferences, onOpen, onGoToSaved }) => {
   // Derive top cuisines from preferences
   const topCuisines = Object.entries(preferences?.regions || {})
     .sort((a,b) => b[1]-a[1]).slice(0,3)
@@ -673,10 +711,12 @@ const ProfileView = ({ user, isPro, onSignIn, onSignOut, onUpgrade, searchCount,
   return (
   <div style={{ background: B.white, minHeight: "100vh", paddingBottom: "80px" }}>
     {user ? (
-      <>
-        {/* Header */}
-        <div style={{ padding: "20px 16px 0" }}>
-          <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "22px", color: B.dark, marginBottom: "16px" }}>My Kitchen</div>
+      <div style={{ padding: "20px 16px 0", maxWidth: "1100px", margin: "0 auto" }}>
+        <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "22px", color: B.dark, marginBottom: "16px" }}>My Kitchen</div>
+        {/* Desktop 2-col layout */}
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr)", gap: "16px" }}
+          className="profile-grid"
+        >
 
           {/* User card */}
           <div style={{ display: "flex", alignItems: "center", gap: "14px", padding: "14px 16px", background: B.bg, borderRadius: "16px", marginBottom: "16px" }}>
@@ -742,7 +782,9 @@ const ProfileView = ({ user, isPro, onSignIn, onSignOut, onUpgrade, searchCount,
             <div style={{ marginBottom: "16px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
                 <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "15px", color: B.dark }}>Recently Saved</div>
-                <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.orange, fontWeight: 600 }}>{bookmarks.length} recipes</span>
+                <span onClick={() => onGoToSaved()} style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.orange, fontWeight: 600, cursor: "pointer" }}>
+                  See all {bookmarks.length} →
+                </span>
               </div>
               <div style={{ display: "flex", gap: "10px", overflowX: "auto", scrollbarWidth: "none", paddingBottom: "4px" }}>
                 {bookmarks.slice(0, 6).map((r, i) => (
@@ -802,7 +844,7 @@ const ProfileView = ({ user, isPro, onSignIn, onSignOut, onUpgrade, searchCount,
             Sign Out
           </button>
         </div>
-      </>
+      </div>
     ) : (
       <div style={{ textAlign: "center", padding: "60px 16px" }}>
         <Logo height={44} />
@@ -872,7 +914,7 @@ export default function App() {
 
   const [user, setUser] = useState(null);
   const [tab, setTab] = useState("home");
-  const [activeFilter, setActiveFilter] = useState("All");
+  const [activeFilter, setActiveFilter] = useState("What to Eat");
   const [selected, setSelected] = useState(null);
   const [bookmarks, setBookmarks] = useState([]);
   const [showPaywall, setShowPaywall] = useState(false);
@@ -1024,7 +1066,7 @@ export default function App() {
       )}
 
       {tab === "search" && (
-        <div style={{ maxWidth: "900px", margin: "0 auto" }}>
+        <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
           <SearchView
             user={user} isPro={isPro} bookmarks={bookmarks}
             onBM={toggleBM} onOpen={openRecipe}
@@ -1042,7 +1084,7 @@ export default function App() {
       )}
 
       {tab === "profile" && (
-        <div style={{ maxWidth: "600px", margin: "0 auto" }}>
+        <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
           <ProfileView
             user={user} isPro={isPro}
             onSignIn={async () => { try { await signInWithGoogle(); } catch {} }}
@@ -1054,6 +1096,7 @@ export default function App() {
             loadingPayment={loadingPayment}
             preferences={preferences}
             onOpen={openRecipe}
+            onGoToSaved={() => handleTabChange("saved")}
           />
         </div>
       )}

@@ -75,7 +75,7 @@ export default async function handler(req, res) {
   const ip = req.headers["x-forwarded-for"]?.split(",")[0]||"unknown";
   if (limited(ip)) return res.status(429).json({error:"Too many requests"});
 
-  const { preferences, recentSearches, batch=0, isPro=false } = req.body||{};
+  const { preferences, recentSearches, batch=0, isPro=false, filter="What to Eat" } = req.body||{};
   const batchNum = Number(batch);
   const limit = isPro ? 999 : 5;
 
@@ -83,7 +83,29 @@ export default async function handler(req, res) {
     return res.status(200).json({ recipes:[], done:true, upgradePrompt:!isPro });
   }
 
-  const query = buildQuery(preferences, recentSearches, batchNum);
+  // Build query based on active filter
+  const CATEGORY_QUERIES = {
+    "African": ["popular West African dishes","East African cuisine","North African recipes","South African food","Nigerian street food","Ghanaian dishes"],
+    "Asian": ["Japanese cuisine dishes","Korean food recipes","Chinese authentic dishes","Thai street food","Vietnamese recipes","Indian curry dishes"],
+    "European": ["Italian pasta recipes","French cuisine dishes","Spanish food","British classic meals","German recipes","Greek Mediterranean food"],
+    "American": ["American comfort food","BBQ American dishes","Southern fried chicken recipes","Mexican Tex-Mex food","Latin American cuisine","Brazilian dishes"],
+    "Healthy": ["healthy meals under 400 calories","low calorie nutritious food","clean eating recipes","balanced diet meals","low fat high nutrition food"],
+    "High Protein": ["high protein chicken meals","protein rich beef dishes","high protein fish recipes","protein meal prep ideas","muscle building meals"],
+    "Vegetarian": ["vegetarian world cuisine","meat-free comfort food","vegetarian Asian dishes","vegetarian Mediterranean food","vegetarian African dishes"],
+    "Quick Meals": ["quick 15 minute meals","easy 20 minute dinner","fast weeknight cooking","simple quick lunch ideas","speedy breakfast recipes"],
+    "Desserts": ["world famous desserts","African sweet treats","Asian desserts","European classic desserts","chocolate desserts","fruit based desserts"],
+    "Drinks": ["healthy smoothies and juices","African traditional drinks","world famous beverages","herbal teas and infusions","fresh fruit juices"],
+    "Breakfast": ["healthy breakfast ideas","African breakfast dishes","full cooked breakfast","protein rich morning meals","quick breakfast recipes"],
+    "Seafood": ["grilled fish recipes","shrimp seafood dishes","salmon cooking ideas","African fish stew","Asian seafood recipes","Mediterranean seafood"],
+  };
+
+  let query;
+  if (filter === "What to Eat" || filter === "All") {
+    query = buildQuery(preferences, recentSearches, batchNum);
+  } else {
+    const catQueries = CATEGORY_QUERIES[filter] || [`popular ${filter} recipes`];
+    query = catQueries[batchNum % catQueries.length];
+  }
   const cacheKey = `feed__${query}__${isPro}`;
 
   // Memory cache

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { auth, signInWithGoogle, signOutUser, getServerSearchCount, incrementServerSearchCount, syncBookmarksToFirestore, loadBookmarksFromFirestore, getSubscriptionStatus, logSearchHistory, getSearchHistory, updatePreferenceProfile, getAdaptiveSectionOrder, trackEngagement, cancelSubscription } from "./firebase.js";
+import { auth, signInWithGoogle, signOutUser, getServerSearchCount, incrementServerSearchCount, syncBookmarksToFirestore, loadBookmarksFromFirestore, getUserProStatus, logSearchHistory, getSearchHistory, updatePreferenceProfile, getAdaptiveSectionOrder, trackEngagement } from "./firebase.js";
 import { onAuthStateChanged } from "firebase/auth";
 
 /* ─── Brand ──────────────────────────────────────────────── */
@@ -288,7 +288,7 @@ const Paywall = ({ user, onSignIn, onDismiss, onUpgrade, loading }) => (
 );
 
 /* ─── Detail View ────────────────────────────────────────── */
-const DetailView = ({ recipe, bookmarked, onBM, onBack, onOpen, isPro, onUpgrade }) => {
+const DetailView = ({ recipe, bookmarked, onBM, onBack, onOpen }) => {
   const [tab, setTab] = useState("ingredients");
   const [imgLoaded, setImgLoaded] = useState(false);
   const [recs, setRecs] = useState([]);
@@ -436,9 +436,6 @@ const DetailView = ({ recipe, bookmarked, onBM, onBack, onOpen, isPro, onUpgrade
           </div>
         )}
 
-        {/* Recipe Tools */}
-        <RecipeTools recipe={recipe} isPro={isPro} onUpgrade={onUpgrade} />
-
         {/* More like this */}
         {recs.length > 0 && (
           <div style={{ marginTop: "36px", paddingTop: "24px", borderTop: `1px solid ${B.border}` }}>
@@ -452,150 +449,6 @@ const DetailView = ({ recipe, bookmarked, onBM, onBack, onOpen, isPro, onUpgrade
           </div>
         )}
       </div>
-    </div>
-  );
-};
-
-/* ─── Recipe Tools ───────────────────────────────────────── */
-const TOOLS = [
-  { id: "party",    label: "Party Mode",    icon: "🎉", pro: true,  desc: "Scale for any crowd" },
-  { id: "shopping", label: "Shopping List", icon: "🛒", pro: false, desc: "Get ingredients list" },
-  { id: "protein",  label: "High Protein",  icon: "💪", pro: true,  desc: "Protein optimised" },
-  { id: "lowcal",   label: "Low Calorie",   icon: "🥗", pro: true,  desc: "Under 400 calories" },
-  { id: "veggie",   label: "Vegetarian",    icon: "🌱", pro: true,  desc: "Plant based version" },
-  { id: "airfryer", label: "Air Fryer",     icon: "⚡", pro: true,  desc: "Air fryer adapted" },
-  { id: "budget",   label: "Budget",        icon: "💰", pro: true,  desc: "Student friendly" },
-];
-
-const RecipeTools = ({ recipe, isPro, onUpgrade }) => {
-  const [activeTool, setActiveTool] = useState(null);
-  const [partySize, setPartySize] = useState(10);
-  const [shoppingDone, setShoppingDone] = useState({});
-
-  const handleTool = (tool) => {
-    if (tool.pro && !isPro) { onUpgrade(); return; }
-    setActiveTool(activeTool === tool.id ? null : tool.id);
-  };
-
-  // Scale ingredient quantities for party mode
-  const baseServings = recipe.servings || 4;
-  const scale = partySize / baseServings;
-  const scaleIngredient = (ing) => {
-    return ing.replace(/(\d+(\.\d+)?)/g, (match) => {
-      const scaled = parseFloat(match) * scale;
-      return scaled % 1 === 0 ? scaled.toString() : scaled.toFixed(1);
-    });
-  };
-
-  // Group ingredients for shopping list
-  const GROUPS = {
-    "Produce": ["tomato","onion","garlic","pepper","lettuce","spinach","cucumber","lemon","lime","carrot","potato","mushroom","ginger","celery","parsley","coriander","basil","chili","leek","avocado","plantain"],
-    "Protein": ["chicken","beef","pork","lamb","fish","shrimp","prawn","egg","tofu","beans","lentil","turkey","salmon","tuna","crab","meat","bacon","sausage"],
-    "Dairy": ["milk","cream","butter","cheese","yogurt","cheddar","mozzarella","parmesan","feta"],
-    "Grains": ["rice","pasta","flour","bread","oats","noodle","couscous","quinoa","cornmeal","spaghetti"],
-    "Spices & Sauces": ["salt","pepper","cumin","paprika","turmeric","cinnamon","oil","sauce","vinegar","soy","stock","broth","bay","thyme","oregano","curry","spice"],
-  };
-  const groupIngredients = (ingredients) => {
-    const grouped = { "Produce": [], "Protein": [], "Dairy": [], "Grains": [], "Spices & Sauces": [], "Other": [] };
-    ingredients.forEach(ing => {
-      const lower = ing.toLowerCase();
-      let placed = false;
-      for (const [group, keywords] of Object.entries(GROUPS)) {
-        if (keywords.some(k => lower.includes(k))) { grouped[group].push(ing); placed = true; break; }
-      }
-      if (!placed) grouped["Other"].push(ing);
-    });
-    return Object.entries(grouped).filter(([,v]) => v.length > 0);
-  };
-
-  return (
-    <div style={{ marginTop: "32px", paddingTop: "24px", borderTop: `1px solid ${B.border}` }}>
-      <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "17px", color: B.dark, marginBottom: "4px" }}>Recipe Tools</div>
-      <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted, marginBottom: "14px" }}>Adapt this recipe to your needs</div>
-
-      {/* Tool chips */}
-      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "16px" }}>
-        {TOOLS.map(tool => (
-          <button key={tool.id} onClick={() => handleTool(tool)} style={{
-            display: "flex", alignItems: "center", gap: "5px",
-            padding: "7px 12px", borderRadius: "20px", cursor: "pointer",
-            fontFamily: "'Inter', sans-serif", fontSize: "12px", fontWeight: 500,
-            border: `1px solid ${activeTool === tool.id ? B.orange : B.border}`,
-            background: activeTool === tool.id ? "#FFF7ED" : B.bg,
-            color: activeTool === tool.id ? B.orange : B.dark,
-            transition: "all 0.18s",
-          }}>
-            <span>{tool.icon}</span>
-            {tool.label}
-            {tool.pro && !isPro && <span style={{ fontSize: "9px", background: B.orange, color: "#fff", borderRadius: "4px", padding: "1px 5px", fontWeight: 700 }}>PRO</span>}
-          </button>
-        ))}
-      </div>
-
-      {/* Party Mode panel */}
-      {activeTool === "party" && (
-        <div style={{ background: B.bg, borderRadius: "16px", padding: "20px", animation: "fadeUp 0.3s ease" }}>
-          <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "15px", color: B.dark, marginBottom: "4px" }}>🎉 Party Mode</div>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted, marginBottom: "16px" }}>Scaled for {partySize} people (original: {baseServings} servings)</div>
-
-          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "16px" }}>
-            {[10, 20, 30, 50, 75, 100].map(n => (
-              <button key={n} onClick={() => setPartySize(n)} style={{
-                padding: "6px 14px", borderRadius: "20px", cursor: "pointer",
-                fontFamily: "'Inter', sans-serif", fontSize: "13px", fontWeight: 600,
-                border: `1px solid ${partySize === n ? B.orange : B.border}`,
-                background: partySize === n ? B.orange : B.white,
-                color: partySize === n ? "#fff" : B.dark, transition: "all 0.15s",
-              }}>{n}</button>
-            ))}
-            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted }}>Custom:</span>
-              <input type="number" value={partySize} min={1} max={500} onChange={e => setPartySize(parseInt(e.target.value)||1)}
-                style={{ width: "60px", padding: "5px 8px", border: `1px solid ${B.border}`, borderRadius: "8px", fontFamily: "'Inter', sans-serif", fontSize: "13px", textAlign: "center" }}
-              />
-            </div>
-          </div>
-
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", fontWeight: 700, color: B.muted, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "10px" }}>Scaled Ingredients</div>
-          {(recipe.ingredients || []).map((ing, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "9px 0", borderBottom: `1px solid ${B.border}` }}>
-              <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: B.orange, flexShrink: 0 }} />
-              <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.dark }}>{scaleIngredient(ing)}</span>
-            </div>
-          ))}
-          <div style={{ marginTop: "14px", fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted }}>
-            Est. total calories: ~{Math.round((recipe.calories || 0) * scale * baseServings)}
-          </div>
-        </div>
-      )}
-
-      {/* Shopping List panel */}
-      {activeTool === "shopping" && (
-        <div style={{ background: B.bg, borderRadius: "16px", padding: "20px", animation: "fadeUp 0.3s ease" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
-            <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "15px", color: B.dark }}>🛒 Shopping List</div>
-            <button onClick={() => {
-              const text = `Shopping List — ${recipe.title}\n\n` + (recipe.ingredients || []).map(i => `□ ${i}`).join("\n");
-              navigator.clipboard?.writeText(text).then(() => alert("Copied to clipboard!"));
-            }} style={{ background: B.dark, color: "#fff", border: "none", borderRadius: "8px", padding: "6px 12px", cursor: "pointer", fontFamily: "'Inter', sans-serif", fontSize: "12px", fontWeight: 600 }}>
-              Copy all
-            </button>
-          </div>
-          {groupIngredients(recipe.ingredients || []).map(([group, items]) => (
-            <div key={group} style={{ marginBottom: "14px" }}>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", fontWeight: 700, color: B.muted, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "6px" }}>{group}</div>
-              {items.map((ing, i) => (
-                <div key={i} onClick={() => setShoppingDone(p => ({...p, [ing]: !p[ing]}))} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 0", borderBottom: `1px solid ${B.border}`, cursor: "pointer" }}>
-                  <div style={{ width: "18px", height: "18px", borderRadius: "4px", border: `2px solid ${shoppingDone[ing] ? B.orange : B.border}`, background: shoppingDone[ing] ? B.orange : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.15s" }}>
-                    {shoppingDone[ing] && <span style={{ color: "#fff", fontSize: "11px", fontWeight: 700 }}>✓</span>}
-                  </div>
-                  <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.dark, textDecoration: shoppingDone[ing] ? "line-through" : "none", opacity: shoppingDone[ing] ? 0.4 : 1 }}>{ing}</span>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 };
@@ -842,7 +695,7 @@ const SavedView = ({ bookmarks, onOpen, onBM }) => (
 );
 
 /* ─── Profile View ───────────────────────────────────────── */
-const ProfileView = ({ user, isPro, subscription, onSignIn, onSignOut, onUpgrade, searchCount, searchHistory, bookmarks, loadingPayment, preferences, onOpen, onGoToSaved, onCancelSubscription }) => {
+const ProfileView = ({ user, isPro, onSignIn, onSignOut, onUpgrade, searchCount, searchHistory, bookmarks, loadingPayment, preferences, onOpen, onGoToSaved }) => {
   // Derive top cuisines from preferences
   const topCuisines = Object.entries(preferences?.regions || {})
     .sort((a,b) => b[1]-a[1]).slice(0,3)
@@ -967,49 +820,6 @@ const ProfileView = ({ user, isPro, subscription, onSignIn, onSignOut, onUpgrade
             </div>
           )}
 
-          {/* Subscription section */}
-          <div style={{ borderRadius: "16px", overflow: "hidden", border: `1px solid ${B.border}`, marginBottom: "16px" }}>
-            <div style={{ padding: "14px 16px", borderBottom: `1px solid ${B.border}`, background: B.white }}>
-              <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "13px", color: B.dark, marginBottom: "10px" }}>Subscription</div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div>
-                  <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.dark, fontWeight: 500 }}>
-                    {isPro ? "Mama K Pro" : "Free Plan"}
-                  </div>
-                  {subscription?.endDate && (
-                    <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", color: subscription.status === "cancelled" ? "#D97706" : B.muted, marginTop: "2px" }}>
-                      {subscription.status === "cancelled"
-                        ? `Access until ${subscription.endDate.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`
-                        : `Next billing ${subscription.endDate.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`
-                      }
-                    </div>
-                  )}
-                </div>
-                <span style={{ background: isPro ? "#F0FDF4" : B.bg, color: isPro ? "#16A34A" : B.muted, border: `1px solid ${isPro ? "#BBF7D0" : B.border}`, borderRadius: "20px", padding: "3px 12px", fontSize: "11px", fontWeight: 700 }}>
-                  {subscription?.status === "cancelled" ? "Cancelling" : isPro ? "Active" : "Free"}
-                </span>
-              </div>
-            </div>
-            {isPro && subscription?.status === "active" && (
-              <div onClick={onCancelSubscription} style={{ padding: "13px 16px", background: B.white, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", transition: "background 0.15s" }}
-                onMouseEnter={e => e.currentTarget.style.background = "#FEF2F2"}
-                onMouseLeave={e => e.currentTarget.style.background = B.white}
-              >
-                <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: "#DC2626", fontWeight: 500 }}>Cancel Subscription</span>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-              </div>
-            )}
-            {!isPro && (
-              <div onClick={onUpgrade} style={{ padding: "13px 16px", background: B.white, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", transition: "background 0.15s" }}
-                onMouseEnter={e => e.currentTarget.style.background = "#FFF7ED"}
-                onMouseLeave={e => e.currentTarget.style.background = B.white}
-              >
-                <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.orange, fontWeight: 600 }}>Upgrade to Pro</span>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.orange} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-              </div>
-            )}
-          </div>
-
           {/* Settings menu */}
           <div style={{ borderRadius: "16px", overflow: "hidden", border: `1px solid ${B.border}`, marginBottom: "16px" }}>
             {[
@@ -1109,26 +919,23 @@ export default function App() {
   const [bookmarks, setBookmarks] = useState([]);
   const [showPaywall, setShowPaywall] = useState(false);
   const [isPro, setIsPro] = useState(false);
-  const [subscription, setSubscription] = useState({ status: "free", isPro: false, endDate: null });
   const [searchCount, setSearchCount] = useState(0);
   const [searchHistory, setSearchHistory] = useState([]);
   const [preferences, setPreferences] = useState(null);
-  const [showCancelModal, setShowCancelModal] = useState(false);
-  const [cancelStep, setCancelStep] = useState(1); // 1=retention 2=confirm 3=done
+  const [loadingPayment, setLoadingPayment] = useState(false);
   const prevTab = useRef("home");
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
-        const [sub, count, bm, hist] = await Promise.all([
-          getSubscriptionStatus(u.uid),
+        const [pro, count, bm, hist] = await Promise.all([
+          getUserProStatus(u.uid),
           getServerSearchCount(u.uid),
           loadBookmarksFromFirestore(u.uid),
           getSearchHistory(u.uid),
         ]);
-        setSubscription(sub);
-        setIsPro(sub.isPro);
+        setIsPro(pro);
         setSearchCount(count);
         setBookmarks(bm);
         setSearchHistory(hist);
@@ -1169,27 +976,13 @@ export default function App() {
     setLoadingPayment(false);
   };
 
-  const handleCancel = async () => {
-    if (!user?.uid) return;
-    await cancelSubscription(user.uid);
-    setSubscription(s => ({ ...s, status: "cancelled" }));
-    setShowCancelModal(false);
-    setCancelStep(1);
-  };
-
   const handleTabChange = t => { prevTab.current = tab; setTab(t); };
 
   // Check Flutterwave redirect
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("payment") === "success" && params.get("status") === "successful" && user?.uid) {
-      import("./firebase.js").then(({ setUserPro }) => {
-        setUserPro(user.uid).then(() => {
-          setIsPro(true);
-          setSubscription({ status: "active", isPro: true, endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) });
-          window.history.replaceState({}, "", window.location.pathname);
-        });
-      });
+      import("./firebase.js").then(({ setUserPro }) => setUserPro(user.uid).then(() => { setIsPro(true); window.history.replaceState({}, "", window.location.pathname); }));
     } else if (params.get("payment")) {
       window.history.replaceState({}, "", window.location.pathname);
     }
@@ -1197,48 +990,6 @@ export default function App() {
 
   return (
     <div style={{ fontFamily: "'Inter', sans-serif", background: B.bg, minHeight: "100vh", position: "relative" }}>
-      {/* Cancellation modal */}
-      {showCancelModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)", zIndex: 999, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-          <div style={{ background: B.white, borderRadius: "24px 24px 0 0", padding: "28px 24px 40px", width: "100%", maxWidth: "520px", animation: "slideUp 0.3s ease" }}>
-            <div style={{ width: "36px", height: "4px", background: B.border, borderRadius: "2px", margin: "0 auto 20px" }} />
-
-            {cancelStep === 1 && (<>
-              <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "20px", color: B.dark, marginBottom: "8px" }}>Wait before you leave</div>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.muted, lineHeight: 1.7, marginBottom: "16px" }}>Your Pro subscription currently gives you:</div>
-              {["Unlimited AI recipe discovery","Recipe Tools — Party Mode, Air Fryer, Budget","Shopping list generator","High Protein, Low Calorie and Vegetarian versions","Smarter personalised recommendations","6 recipes per search"].map(f => (
-                <div key={f} style={{ display: "flex", gap: "8px", marginBottom: "7px", alignItems: "flex-start" }}>
-                  <span style={{ color: B.orange, fontWeight: 700, flexShrink: 0 }}>✓</span>
-                  <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.dark }}>{f}</span>
-                </div>
-              ))}
-              {subscription?.endDate && (
-                <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: "10px", padding: "10px 14px", marginTop: "14px", fontFamily: "'Inter', sans-serif", fontSize: "12px", color: "#D97706" }}>
-                  Your subscription remains active until {subscription.endDate.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
-                </div>
-              )}
-              <button onClick={() => setShowCancelModal(false)} className="btn-primary" style={{ width: "100%", marginTop: "20px", padding: "14px", borderRadius: "12px", fontSize: "15px" }}>Keep Pro</button>
-              <button onClick={() => setCancelStep(2)} style={{ width: "100%", marginTop: "8px", padding: "12px", background: "none", border: "none", cursor: "pointer", fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.muted }}>Continue to cancel</button>
-            </>)}
-
-            {cancelStep === 2 && (<>
-              <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "20px", color: B.dark, marginBottom: "8px" }}>Are you sure?</div>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.muted, lineHeight: 1.6, marginBottom: "16px" }}>After your billing period ends you will lose access to:</div>
-              {["Unlimited AI searches","Recipe Tools","Party Mode and Party Scaling","Shopping list generator","Meal planning features"].map(f => (
-                <div key={f} style={{ display: "flex", gap: "8px", marginBottom: "7px" }}>
-                  <span style={{ color: "#DC2626", flexShrink: 0 }}>✕</span>
-                  <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.dark }}>{f}</span>
-                </div>
-              ))}
-              <button onClick={() => setShowCancelModal(false)} className="btn-primary" style={{ width: "100%", marginTop: "20px", padding: "14px", borderRadius: "12px", fontSize: "15px" }}>Keep Pro</button>
-              <button onClick={handleCancel} style={{ width: "100%", marginTop: "8px", padding: "12px", background: "none", border: "1px solid #FECACA", borderRadius: "12px", cursor: "pointer", fontFamily: "'Inter', sans-serif", fontSize: "13px", color: "#DC2626", fontWeight: 600 }}>
-                Cancel Subscription
-              </button>
-            </>)}
-          </div>
-        </div>
-      )}
-
       {showPaywall && (
         <Paywall
           user={user}
@@ -1259,8 +1010,6 @@ export default function App() {
               onBM={() => toggleBM(selected)}
               onBack={closeRecipe}
               onOpen={r => { closeRecipe(); setTimeout(() => openRecipe(r), 50); }}
-              isPro={isPro}
-              onUpgrade={() => setShowPaywall(true)}
             />
           </div>
         </div>
@@ -1337,9 +1086,9 @@ export default function App() {
       {tab === "profile" && (
         <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
           <ProfileView
-            user={user} isPro={isPro} subscription={subscription}
+            user={user} isPro={isPro}
             onSignIn={async () => { try { await signInWithGoogle(); } catch {} }}
-            onSignOut={() => { signOutUser(); setIsPro(false); setSearchCount(0); setBookmarks([]); setSearchHistory([]); setPreferences(null); setSubscription({ status: "free", isPro: false, endDate: null }); }}
+            onSignOut={() => { signOutUser(); setIsPro(false); setSearchCount(0); setBookmarks([]); setSearchHistory([]); setPreferences(null); }}
             onUpgrade={handleUpgrade}
             searchCount={searchCount}
             searchHistory={searchHistory}
@@ -1348,7 +1097,6 @@ export default function App() {
             preferences={preferences}
             onOpen={openRecipe}
             onGoToSaved={() => handleTabChange("saved")}
-            onCancelSubscription={() => { setCancelStep(1); setShowCancelModal(true); }}
           />
         </div>
       )}

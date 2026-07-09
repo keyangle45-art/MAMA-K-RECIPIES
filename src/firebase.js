@@ -66,21 +66,58 @@ export const loadBookmarksFromFirestore = async (uid) => {
   return [];
 };
 
-/* ─── Pro status ─────────────────────────────────────────── */
-export const getUserProStatus = async (uid) => {
-  if (!uid) return false;
+/* ─── Subscription States ────────────────────────────────── */
+// States: free | active | cancelled | expired
+export const getSubscriptionStatus = async (uid) => {
+  if (!uid) return { status: "free", isPro: false };
   try {
     const snap = await getDoc(doc(db, "users", uid));
-    return snap.exists() && snap.data().isPro === true;
-  } catch { return false; }
+    if (!snap.exists()) return { status: "free", isPro: false };
+    const data = snap.data();
+    const status = data.subscriptionStatus || (data.isPro ? "active" : "free");
+    const endDate = data.subscriptionEndDate?.toDate?.() || null;
+    const now = new Date();
+
+    // If cancelled but end date hasn't passed — still Pro
+    if (status === "cancelled" && endDate && endDate > now) {
+      return { status: "cancelled", isPro: true, endDate };
+    }
+    // If expired or end date passed
+    if ((status === "cancelled" || status === "expired") && (!endDate || endDate <= now)) {
+      // Auto-downgrade
+      await updateDoc(doc(db, "users", uid), { subscriptionStatus: "expired", isPro: false });
+      return { status: "expired", isPro: false };
+    }
+    if (status === "active") return { status: "active", isPro: true, endDate };
+    return { status: "free", isPro: false };
+  } catch { return { status: "free", isPro: false }; }
 };
 
-export const setUserPro = async (uid) => {
+export const getUserProStatus = async (uid) => {
+  const sub = await getSubscriptionStatus(uid);
+  return sub.isPro;
+};
+
+export const setUserPro = async (uid, endDate = null) => {
   if (!uid) return;
+  const nextBilling = endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   await setDoc(doc(db, "users", uid), {
     isPro: true,
+    subscriptionStatus: "active",
+    subscriptionEndDate: nextBilling,
     proSince: serverTimestamp(),
   }, { merge: true });
+};
+
+export const cancelSubscription = async (uid) => {
+  if (!uid) return;
+  const snap = await getDoc(doc(db, "users", uid));
+  const endDate = snap.data()?.subscriptionEndDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  await updateDoc(doc(db, "users", uid), {
+    subscriptionStatus: "cancelled",
+    cancelledAt: serverTimestamp(),
+    subscriptionEndDate: endDate, // retain access until end date
+  });
 };
 
 /* ─── PHASE 2: Engagement Tracking ──────────────────────── */

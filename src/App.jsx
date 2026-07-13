@@ -1158,6 +1158,7 @@ function AppInner() {
   const [preferences, setPreferences] = useState(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelStep, setCancelStep] = useState(1); // 1=retention 2=confirm 3=done
+  const [loadingPayment, setLoadingPayment] = useState(false);
   const prevTab = useRef("home");
 
   useEffect(() => {

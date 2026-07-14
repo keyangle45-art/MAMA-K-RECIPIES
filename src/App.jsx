@@ -71,22 +71,26 @@ const saveBM = (b) => localStorage.setItem("mk_bm", JSON.stringify(b));
 const recipeCache = new Map();
 
 const callAPI = async (query, isPro = false, uid = null) => {
+  const result = await callAPIDetailed(query, isPro, uid);
+  return result.recipes;
+};
+
+// Returns { recipes, searchCount, limitReached, error } — server is the single source of truth
+const callAPIDetailed = async (query, isPro = false, uid = null) => {
   const key = `${query.toLowerCase()}__${isPro}`;
-  if (recipeCache.has(key)) return recipeCache.get(key);
+  if (recipeCache.has(key)) return { recipes: recipeCache.get(key), searchCount: null, limitReached: false };
   const res = await fetch("/api/recipes", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ query, isPro, uid }),
   });
+  const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    if (err.limitReached) throw new Error("LIMIT_REACHED");
-    return [];
+    return { recipes: [], searchCount: data.searchCount ?? null, limitReached: !!data.limitReached, error: data.error };
   }
-  const data = await res.json();
   const recipes = data.recipes || [];
   if (recipes.length > 0) recipeCache.set(key, recipes);
-  return recipes;
+  return { recipes, searchCount: data.searchCount ?? null, limitReached: false };
 };
 
 const callFeed = async (preferences, recentSearches, batch, isPro, filter) => {
@@ -346,11 +350,43 @@ const DetailView = ({ recipe, bookmarked, onBM, onBack, onOpen, isPro, onUpgrade
   const [tab, setTab] = useState("ingredients");
   const [imgLoaded, setImgLoaded] = useState(false);
   const [recs, setRecs] = useState([]);
+  const [recsLoading, setRecsLoading] = useState(true);
   const [liked, setLiked] = useState(false);
 
   useEffect(() => {
-    const q = recipe.region ? `${recipe.region} cuisine similar to ${recipe.title}` : `similar to ${recipe.title}`;
-    callAPI(q, false).then(r => setRecs(r.filter(x => x.title !== recipe.title).slice(0, 4)));
+    let cancelled = false;
+    setRecsLoading(true);
+    setRecs([]);
+
+    const attempt = async (q) => {
+      try {
+        const r = await callAPI(q, false);
+        return (r || []).filter(x => x.title !== recipe.title);
+      } catch { return []; }
+    };
+
+    (async () => {
+      // Try the queries most likely to already be seeded in Firestore first —
+      // these resolve instantly and never touch the AI. Only fall back to a
+      // novel compound phrase (which requires a live AI call) as a last resort.
+      const candidates = [
+        recipe.region ? `Popular ${recipe.region} Dishes` : null,
+        recipe.cuisine ? `Classic ${recipe.cuisine} Recipes` : null,
+        recipe.region ? `${recipe.region} cuisine similar to ${recipe.title}` : `similar to ${recipe.title}`,
+      ].filter(Boolean);
+
+      for (const q of candidates) {
+        if (cancelled) return;
+        const found = await attempt(q);
+        if (found.length > 0) {
+          if (!cancelled) { setRecs(found.slice(0, 4)); setRecsLoading(false); }
+          return;
+        }
+      }
+      if (!cancelled) setRecsLoading(false);
+    })();
+
+    return () => { cancelled = true; };
   }, [recipe.title]);
 
   return (
@@ -494,14 +530,17 @@ const DetailView = ({ recipe, bookmarked, onBM, onBack, onOpen, isPro, onUpgrade
         <RecipeTools recipe={recipe} isPro={isPro} onUpgrade={onUpgrade} />
 
         {/* More like this */}
-        {recs.length > 0 && (
+        {(recsLoading || recs.length > 0) && (
           <div style={{ marginTop: "36px", paddingTop: "24px", borderTop: `1px solid ${B.border}` }}>
             <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "17px", color: B.dark, marginBottom: "4px" }}>More Like This</div>
             <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted, marginBottom: "16px" }}>Based on {recipe.region || recipe.cuisine || "similar style"}</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-              {recs.map((r, i) => (
-                <RecipeCard key={i} r={r} onOpen={() => onOpen(r)} bookmarked={false} onBM={() => {}} />
-              ))}
+              {recsLoading
+                ? Array(4).fill(0).map((_, i) => <SkeletonCard key={i} />)
+                : recs.map((r, i) => (
+                    <RecipeCard key={i} r={r} onOpen={() => onOpen(r)} bookmarked={false} onBM={() => {}} />
+                  ))
+              }
             </div>
           </div>
         )}
@@ -761,11 +800,12 @@ const HomeFeed = ({ user, isPro, preferences, recentSearches, bookmarks, onBM, o
 };
 
 /* ─── Search View ────────────────────────────────────────── */
-const SearchView = ({ user, isPro, bookmarks, onBM, onOpen, onShowPaywall, searchHistory, searchCount, onIncrementCount }) => {
+const SearchView = ({ user, isPro, bookmarks, onBM, onOpen, onShowPaywall, searchHistory, searchCount, onSyncCount }) => {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [searchError, setSearchError] = useState(false);
   const inputRef = useRef();
 
   useEffect(() => { setTimeout(() => inputRef.current?.focus(), 100); }, []);
@@ -774,29 +814,45 @@ const SearchView = ({ user, isPro, bookmarks, onBM, onOpen, onShowPaywall, searc
     const raw = (overrideQuery || query || "").trim();
     if (!raw) return;
     if (!user) { onShowPaywall(); return; }
+    // Soft client-side gate — fast UX only. Server is the real source of truth.
     if (!isPro && searchCount >= FREE_LIMIT) { onShowPaywall(); return; }
 
-    // Normalize
     const normalized = raw.toLowerCase().replace(/[^\w\s]/g, "").replace(/\s+/g, " ").trim();
-
-    // Increment server-side BEFORE calling AI so limit is enforced even if user refreshes
-    if (!isPro) await onIncrementCount();
 
     setLoading(true);
     setSearched(true);
+    setSearchError(false);
 
-    // Try normalized first, then raw if empty
+    let recipes = [];
     try {
-      let r = await callAPI(normalized, isPro, user?.uid);
-      if (!r.length) r = await callAPI(raw, isPro, user?.uid);
-      setResults(r);
-    } catch (e) {
-      if (e.message === "LIMIT_REACHED") { onShowPaywall(); }
+      // First attempt
+      let outcome = await callAPIDetailed(normalized, isPro, user?.uid);
+
+      if (outcome.limitReached) {
+        setLoading(false);
+        if (outcome.searchCount != null) onSyncCount(outcome.searchCount);
+        onShowPaywall();
+        return;
+      }
+
+      // A genuine transient failure (AI parse hiccup etc) never costs the free search —
+      // safe to retry automatically once with the same query.
+      if (outcome.recipes.length === 0) {
+        outcome = await callAPIDetailed(normalized, isPro, user?.uid);
+      }
+
+      recipes = outcome.recipes;
+      if (outcome.searchCount != null) onSyncCount(outcome.searchCount);
+      if (recipes.length === 0) setSearchError(!!outcome.error);
+
+      setResults(recipes);
+    } catch {
       setResults([]);
+      setSearchError(true);
     }
     setLoading(false);
 
-    if (user?.uid && r.length > 0) {
+    if (user?.uid && recipes.length > 0) {
       logSearchHistory(user.uid, normalized);
       updatePreferenceProfile(user.uid, { query: normalized });
     }
@@ -857,11 +913,23 @@ const SearchView = ({ user, isPro, bookmarks, onBM, onOpen, onShowPaywall, searc
         {searched && !loading && (
           <>
             <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "18px", color: B.dark, marginBottom: "4px" }}>{query}</div>
-            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted, marginBottom: "16px" }}>{results.length} recipes found</div>
+            {!searchError && (
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted, marginBottom: "16px" }}>{results.length} recipes found</div>
+            )}
             {results.length === 0 ? (
               <div style={{ textAlign: "center", padding: "60px 0", color: B.muted }}>
-                <div style={{ fontSize: "40px", marginBottom: "12px" }}>🔍</div>
-                <div style={{ fontFamily: "'Poppins', sans-serif", fontSize: "16px" }}>No recipes found</div>
+                <div style={{ fontSize: "40px", marginBottom: "12px" }}>{searchError ? "⚠️" : "🔍"}</div>
+                <div style={{ fontFamily: "'Poppins', sans-serif", fontSize: "16px", marginBottom: "6px" }}>
+                  {searchError ? "Something went wrong" : "No recipes found"}
+                </div>
+                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.muted, marginBottom: "16px" }}>
+                  {searchError ? "That didn't cost your free search — try again." : "Try a different dish or spelling."}
+                </div>
+                {searchError && (
+                  <button onClick={() => doSearch(query)} className="btn-primary" style={{ padding: "10px 24px", borderRadius: "10px", fontSize: "13px" }}>
+                    Try Again
+                  </button>
+                )}
               </div>
             ) : (
               <div className="recipe-grid" style={{ padding: 0 }}>
@@ -1368,11 +1436,7 @@ function AppInner() {
             onShowPaywall={() => setShowPaywall(true)}
             searchHistory={searchHistory}
             searchCount={searchCount}
-            onIncrementCount={async () => {
-              const newCount = await incrementServerSearchCount(user?.uid);
-              setSearchCount(newCount);
-              return newCount;
-            }}
+            onSyncCount={(newCount) => setSearchCount(newCount)}
           />
         </div>
       )}

@@ -1,268 +1,165 @@
-import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
-import { getFirestore, doc, getDoc, setDoc, updateDoc, increment, serverTimestamp, arrayUnion, collection, query, orderBy, limit, getDocs } from "firebase/firestore";
+import { callAI } from "./ai-provider.js";
 
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-};
+const hotCache = new Map();
+const rateLimits = new Map();
+const FREE_LIMIT = 1;
 
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const googleProvider = new GoogleAuthProvider();
+function isRateLimited(ip) {
+  const now = Date.now();
+  const e = rateLimits.get(ip) || { count: 0, start: now };
+  if (now - e.start > 60000) { rateLimits.set(ip, { count: 1, start: now }); return false; }
+  if (e.count >= 15) return true;
+  e.count++; rateLimits.set(ip, e);
+  return false;
+}
 
-export const signInWithGoogle = () => signInWithPopup(auth, googleProvider);
-export const signOutUser = () => signOut(auth);
-
-/* ─── Date helpers ───────────────────────────────────────── */
+const slugify = q => q.toLowerCase().trim().replace(/[^a-z0-9\s-]/g,"").replace(/\s+/g,"-").slice(0,80);
 const todayKey = () => new Date().toISOString().slice(0, 10);
 
-/* ─── Search count (server-side per user per day) ────────── */
-export const getServerSearchCount = async (uid) => {
-  if (!uid) return parseInt(localStorage.getItem("mk_sc_guest") || "0");
+// Read current search count for today WITHOUT incrementing. Returns {allowed, current}.
+async function getUserLimitInfo(uid, isPro) {
+  if (isPro || !uid) return { allowed: true, current: 0 };
   try {
-    const snap = await getDoc(doc(db, "users", uid));
-    if (!snap.exists()) return 0;
-    return snap.data().searches?.[todayKey()] || 0;
-  } catch { return 0; }
-};
+    const projectId = process.env.FIREBASE_PROJECT_ID || "mama-k-recipies";
+    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`;
+    const res = await fetch(url);
+    if (!res.ok) return { allowed: true, current: 0 }; // fail open — Firestore unreachable
+    const data = await res.json();
+    const raw = data?.fields?.searches?.mapValue?.fields?.[todayKey()]?.integerValue;
+    const current = raw ? parseInt(raw) : 0;
+    return { allowed: current < FREE_LIMIT, current };
+  } catch { return { allowed: true, current: 0 }; }
+}
 
-export const incrementServerSearchCount = async (uid) => {
-  if (!uid) {
-    const c = parseInt(localStorage.getItem("mk_sc_guest") || "0") + 1;
-    localStorage.setItem("mk_sc_guest", c);
-    return c;
-  }
+// Atomically bump today's count by 1 — only ever called AFTER a genuine successful AI generation.
+async function incrementUserSearchCount(uid, currentCount) {
   try {
-    const ref = doc(db, "users", uid);
+    const projectId = process.env.FIREBASE_PROJECT_ID || "mama-k-recipies";
     const today = todayKey();
-    const snap = await getDoc(ref);
-    if (!snap.exists()) {
-      await setDoc(ref, { searches: { [today]: 1 }, createdAt: serverTimestamp() });
-      return 1;
-    }
-    const current = snap.data().searches?.[today] || 0;
-    await updateDoc(ref, { [`searches.${today}`]: increment(1) });
-    return current + 1;
-  } catch { return 0; }
-};
+    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}?updateMask.fieldPaths=searches.${today}&currentDocument.exists=true`;
+    const body = { fields: { searches: { mapValue: { fields: { [today]: { integerValue: String(currentCount + 1) } } } } } };
+    const res = await fetch(url, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (res.ok) return currentCount + 1;
+    // Document may not exist yet for a brand new user — create it.
+    const createUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`;
+    await fetch(createUrl, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    return currentCount + 1;
+  } catch { return currentCount; }
+}
 
-/* ─── Bookmarks ──────────────────────────────────────────── */
-export const syncBookmarksToFirestore = async (uid, bookmarks) => {
-  if (!uid) return;
-  try { await setDoc(doc(db, "users", uid), { bookmarks }, { merge: true }); }
-  catch {}
-};
-
-export const loadBookmarksFromFirestore = async (uid) => {
-  if (!uid) return JSON.parse(localStorage.getItem("mk_bm") || "[]");
+async function checkFirestore(query, isPro) {
   try {
-    const snap = await getDoc(doc(db, "users", uid));
-    if (snap.exists() && snap.data().bookmarks) return snap.data().bookmarks;
-  } catch {}
-  return [];
-};
-
-/* ─── Subscription States ────────────────────────────────── */
-// States: free | active | cancelled | expired
-export const getSubscriptionStatus = async (uid) => {
-  if (!uid) return { status: "free", isPro: false };
-  try {
-    const snap = await getDoc(doc(db, "users", uid));
-    if (!snap.exists()) return { status: "free", isPro: false };
-    const data = snap.data();
-    const status = data.subscriptionStatus || (data.isPro ? "active" : "free");
-    const endDate = data.subscriptionEndDate?.toDate?.() || null;
-    const now = new Date();
-
-    // If cancelled but end date hasn't passed — still Pro
-    if (status === "cancelled" && endDate && endDate > now) {
-      return { status: "cancelled", isPro: true, endDate };
-    }
-    // If expired or end date passed
-    if ((status === "cancelled" || status === "expired") && (!endDate || endDate <= now)) {
-      // Auto-downgrade
-      await updateDoc(doc(db, "users", uid), { subscriptionStatus: "expired", isPro: false });
-      return { status: "expired", isPro: false };
-    }
-    if (status === "active") return { status: "active", isPro: true, endDate };
-    return { status: "free", isPro: false };
-  } catch { return { status: "free", isPro: false }; }
-};
-
-export const getUserProStatus = async (uid) => {
-  const sub = await getSubscriptionStatus(uid);
-  return sub.isPro;
-};
-
-export const setUserPro = async (uid, endDate = null) => {
-  if (!uid) return;
-  const nextBilling = endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-  await setDoc(doc(db, "users", uid), {
-    isPro: true,
-    subscriptionStatus: "active",
-    subscriptionEndDate: nextBilling,
-    proSince: serverTimestamp(),
-  }, { merge: true });
-};
-
-export const cancelSubscription = async (uid) => {
-  if (!uid) return;
-  const snap = await getDoc(doc(db, "users", uid));
-  const endDate = snap.data()?.subscriptionEndDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-  await updateDoc(doc(db, "users", uid), {
-    subscriptionStatus: "cancelled",
-    cancelledAt: serverTimestamp(),
-    subscriptionEndDate: endDate, // retain access until end date
-  });
-};
-
-/* ─── PHASE 2: Engagement Tracking ──────────────────────── */
-/**
- * Track engagement signals — feeds into personalization scoring
- * Called when user: opens a recipe, dwells on it, bookmarks it
- */
-export const trackEngagement = async (uid, signal) => {
-  if (!uid) return;
-  try {
-    const { type, recipe, dwellSeconds } = signal;
-    // type: "open" | "dwell" | "bookmark" | "scroll_depth"
-    const updates = {
-      lastActiveAt: serverTimestamp(),
-      [`engagement.${type}Count`]: increment(1),
-    };
-    // Update cuisine/region scores based on engagement strength
-    const weight = type === "bookmark" ? 5 : type === "dwell" && dwellSeconds > 30 ? 3 : 1;
-    if (recipe?.cuisine) updates[`preferences.cuisines.${recipe.cuisine.toLowerCase().replace(/\s+/g, "_")}`] = increment(weight);
-    if (recipe?.region)  updates[`preferences.regions.${recipe.region.toLowerCase().replace(/\s+/g, "_")}`] = increment(weight);
-    if (recipe?.difficulty) updates[`preferences.difficulty.${recipe.difficulty.toLowerCase()}`] = increment(weight);
-    await updateDoc(doc(db, "users", uid), updates);
-  } catch {}
-};
-
-/**
- * Log every search to user's history
- * Structure: users/{uid}/searchHistory/{timestamp}
- * { query, timestamp, resultCount, cuisine, region }
- */
-export const logSearchHistory = async (uid, query, resultCount = 0) => {
-  if (!uid) return;
-  try {
-    const entry = {
-      query: query.toLowerCase().trim(),
-      searchedAt: serverTimestamp(),
-      resultCount,
-      id: Date.now().toString(),
-    };
-    // Store last 50 searches in user doc as array
-    await setDoc(doc(db, "users", uid), {
-      searchHistory: arrayUnion(entry),
-      lastActiveAt: serverTimestamp(),
-    }, { merge: true });
-  } catch {}
-};
-
-export const getSearchHistory = async (uid) => {
-  if (!uid) return [];
-  try {
-    const snap = await getDoc(doc(db, "users", uid));
-    if (!snap.exists()) return [];
-    const history = snap.data().searchHistory || [];
-    // Return last 20, most recent first
-    return history.slice(-20).reverse();
-  } catch { return []; }
-};
-
-/* ─── PHASE 1: User Preference Profile ──────────────────── */
-/**
- * Update preference profile silently on every search + bookmark
- * Tracks: cuisines, regions, difficulty, dietary patterns, activity times
- */
-export const updatePreferenceProfile = async (uid, data) => {
-  if (!uid) return;
-  try {
-    const { query, cuisine, region, difficulty, tags = [] } = data;
-    const hour = new Date().getHours();
-    const timeSlot = hour < 11 ? "morning" : hour < 15 ? "afternoon" : hour < 20 ? "evening" : "night";
-
-    const updates = {
-      lastActiveAt: serverTimestamp(),
-      [`preferences.activityTimes.${timeSlot}`]: increment(1),
-    };
-
-    if (cuisine) updates[`preferences.cuisines.${cuisine.toLowerCase().replace(/\s+/g, "_")}`] = increment(1);
-    if (region)  updates[`preferences.regions.${region.toLowerCase().replace(/\s+/g, "_")}`] = increment(1);
-    if (difficulty) updates[`preferences.difficulty.${difficulty.toLowerCase()}`] = increment(1);
-
-    // Track dietary signals from tags
-    tags.forEach(tag => {
-      const t = tag.toLowerCase();
-      if (["vegan","vegetarian","healthy","low calorie","low-cal","plant-based"].some(k => t.includes(k))) {
-        updates["preferences.dietary.healthy"] = increment(1);
+    const projectId = process.env.FIREBASE_PROJECT_ID || "mama-k-recipies";
+    const key = slugify(query) + (isPro ? "__pro" : "__free");
+    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/recipes/${key}`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const arr = data?.fields?.recipes?.arrayValue?.values;
+    if (!arr?.length) return null;
+    return arr.map(v => {
+      const f = v.mapValue?.fields || {};
+      const out = {};
+      for (const [k, fv] of Object.entries(f)) {
+        if (fv.stringValue !== undefined) out[k] = fv.stringValue;
+        else if (fv.integerValue !== undefined) out[k] = parseInt(fv.integerValue);
+        else if (fv.booleanValue !== undefined) out[k] = fv.booleanValue;
+        else if (fv.arrayValue) out[k] = fv.arrayValue.values?.map(av => av.stringValue || "") || [];
+        else if (fv.nullValue !== undefined) out[k] = null;
       }
-      if (["spicy","hot","chili"].some(k => t.includes(k))) {
-        updates["preferences.dietary.spicy"] = increment(1);
-      }
-      if (["quick","easy","fast","30 min","20 min"].some(k => t.includes(k))) {
-        updates["preferences.dietary.quick"] = increment(1);
-      }
+      return out;
     });
-
-    // Track African food interest
-    const africanKeywords = ["nigerian","jollof","egusi","african","ghanaian","senegalese","ethiopian","kenyan","yoruba","igbo"];
-    if (africanKeywords.some(k => query?.toLowerCase().includes(k))) {
-      updates["preferences.regions.west_african"] = increment(2); // weight African searches higher
-    }
-
-    await updateDoc(doc(db, "users", uid), updates);
-  } catch {}
-};
-
-export const getPreferenceProfile = async (uid) => {
-  if (!uid) return null;
-  try {
-    const snap = await getDoc(doc(db, "users", uid));
-    if (!snap.exists()) return null;
-    return snap.data().preferences || null;
   } catch { return null; }
-};
+}
 
-/**
- * Get ordered section IDs based on user preferences
- * Returns array of section IDs sorted by user affinity
- */
-export const getAdaptiveSectionOrder = async (uid) => {
-  const defaultOrder = [
-    "top-african", "top-american", "top-british",
-    "top-european", "top-asian", "legacy", "healthy", "community"
-  ];
-  if (!uid) return defaultOrder;
-
+async function saveToFirestore(query, recipes, isPro) {
   try {
-    const prefs = await getPreferenceProfile(uid);
-    if (!prefs) return defaultOrder;
-
-    const regions = prefs.regions || {};
-    const dietary = prefs.dietary || {};
-
-    // Score each section based on user behavior
-    const scores = {
-      "top-african":  (regions.west_african || 0) + (regions.east_african || 0) + (regions.nigeria || 0) * 2,
-      "top-american": (regions.usa || 0) + (regions.america || 0),
-      "top-british":  (regions.england || 0) + (regions.uk || 0) + (regions.britain || 0),
-      "top-european": (regions.italy || 0) + (regions.france || 0) + (regions.spain || 0) + (regions.europe || 0),
-      "top-asian":    (regions.japan || 0) + (regions.china || 0) + (regions.india || 0) + (regions.asia || 0),
-      "legacy":       0,
-      "healthy":      (dietary.healthy || 0) * 3,
-      "community":    0,
+    const projectId = process.env.FIREBASE_PROJECT_ID || "mama-k-recipies";
+    const key = slugify(query) + (isPro ? "__pro" : "__free");
+    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/recipes/${key}`;
+    const toFV = (val) => {
+      if (val === null || val === undefined) return { nullValue: null };
+      if (typeof val === "boolean") return { booleanValue: val };
+      if (typeof val === "number") return { integerValue: String(Math.round(val)) };
+      if (typeof val === "string") return { stringValue: val };
+      if (Array.isArray(val)) return { arrayValue: { values: val.map(toFV) } };
+      if (typeof val === "object") { const f={}; for(const[k,v] of Object.entries(val)) f[k]=toFV(v); return{mapValue:{fields:f}}; }
+      return { stringValue: String(val) };
     };
+    fetch(url, { method:"PATCH", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ fields: { query:{stringValue:query}, slugKey:{stringValue:slugify(query)}, recipes:toFV(recipes), searchCount:{integerValue:"1"} } })
+    }).catch(()=>{});
+  } catch {}
+}
 
-    // Sort by score descending, keep default order for ties
-    return [...defaultOrder].sort((a, b) => (scores[b] || 0) - (scores[a] || 0));
-  } catch {
-    return defaultOrder;
+export default async function handler(req, res) {
+  res.setHeader("Access-Control-Allow-Origin","*");
+  res.setHeader("Access-Control-Allow-Methods","POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers","Content-Type");
+  if (req.method==="OPTIONS") return res.status(200).end();
+  if (req.method!=="POST") return res.status(405).json({error:"Method not allowed"});
+
+  const ip = req.headers["x-forwarded-for"]?.split(",")[0]||"unknown";
+  if (isRateLimited(ip)) return res.status(429).json({error:"Too many requests"});
+
+  const { query, isPro, uid } = req.body||{};
+  if (!query||typeof query!=="string") return res.status(400).json({error:"No query"});
+  const cleanQ = query.trim().slice(0,100);
+  if (cleanQ.length<2) return res.status(400).json({error:"Query too short"});
+
+  // Read the limit state — do NOT increment yet. Cache hits below never cost a search.
+  const limitInfo = await getUserLimitInfo(uid, isPro);
+  if (!limitInfo.allowed) {
+    return res.status(403).json({ error:"Search limit reached", limitReached: true, searchCount: limitInfo.current });
   }
-};
+
+  const count = isPro ? 6 : 2;
+  const cacheKey = `${cleanQ.toLowerCase()}__${isPro}`;
+
+  // 1. Hot memory cache — free, doesn't touch the limit
+  const hot = hotCache.get(cacheKey);
+  if (hot && Date.now()-hot.time < 1800000) {
+    res.setHeader("X-Cache","HIT-MEMORY");
+    return res.status(200).json({ recipes:hot.data, isPro, cached:true, searchCount: limitInfo.current });
+  }
+
+  // 2. Firestore database cache — free, doesn't touch the limit
+  const dbRecipes = await checkFirestore(cleanQ, isPro);
+  if (dbRecipes?.length) {
+    hotCache.set(cacheKey, { data:dbRecipes, time:Date.now() });
+    res.setHeader("X-Cache","HIT-FIRESTORE");
+    return res.status(200).json({ recipes:dbRecipes, isPro, cached:true, searchCount: limitInfo.current });
+  }
+
+  // 3. Genuine cache miss — this is the only path that costs a free search
+  try {
+    const prompt = `Culinary database. Return ONLY valid JSON array of exactly ${count} recipes for: "${cleanQ}". Recipe 1 = most authentic original. Each: {"title":string,"emoji":emoji,"tagline":max 10 words,"time":string,"difficulty":"Easy"|"Medium"|"Advanced","servings":number,"calories":number,"cuisine":string,"region":string,"tags":[2 strings],"ingredients":[6-10 strings],"steps":[4-6 strings]}. ONLY raw JSON array.`;
+    const text = await callAI(prompt, isPro?3000:1200);
+    let recipes = JSON.parse(text.replace(/^```json\s*/i,"").replace(/```\s*$/i,"").trim());
+    if (!Array.isArray(recipes) || recipes.length === 0) throw new Error("Empty or invalid AI response");
+
+    const pexelsKey = process.env.PEXELS_API_KEY;
+    const withImages = await Promise.all(recipes.map(async r => {
+      try {
+        const q = encodeURIComponent(`${r.title} food dish plated`);
+        const pRes = await fetch(`https://api.pexels.com/v1/search?query=${q}&per_page=1&orientation=landscape`,{headers:{Authorization:pexelsKey}});
+        const pData = await pRes.json();
+        const photo = pData?.photos?.[0];
+        return photo ? {...r,imageSmall:photo.src.tiny,image:photo.src.medium,imageLarge:photo.src.large2x,photographer:photo.photographer} : {...r,image:null};
+      } catch { return {...r,image:null}; }
+    }));
+
+    hotCache.set(cacheKey, { data:withImages, time:Date.now() });
+    saveToFirestore(cleanQ, withImages, isPro);
+
+    // Only NOW, after confirmed success, spend the user's free search.
+    let newCount = limitInfo.current;
+    if (!isPro && uid) newCount = await incrementUserSearchCount(uid, limitInfo.current);
+
+    res.setHeader("X-Cache","MISS");
+    return res.status(200).json({ recipes:withImages, isPro, searchCount: newCount });
+  } catch(err) {
+    // A failed/flaky AI attempt never costs the user their free search.
+    return res.status(500).json({ error:err.message, searchCount: limitInfo.current });
+  }
+}

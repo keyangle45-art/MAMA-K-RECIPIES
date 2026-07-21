@@ -1,4 +1,5 @@
 import { callAI } from "./ai-provider.js";
+import { indexRecipes } from "./recipe-index.js";
 
 const SEED_QUERIES = [
   // WEST AFRICAN FOOD
@@ -223,6 +224,12 @@ export default async function handler(req, res) {
         method:"PATCH", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({ fields:{ query:{stringValue:query.toLowerCase().trim()}, slugKey:{stringValue:slugify(query)}, type:{stringValue:drink?"drink":"food"}, seeded:{booleanValue:true}, searchCount:{integerValue:"0"}, recipes:toFV(recipes) } })
       });
+
+      // Index each recipe individually — makes category filters and
+      // recommendations work as real Firestore queries instead of guesswork.
+      const taggedRecipes = recipes.map(r => ({ ...r, type: drink ? "drink" : "food" }));
+      indexRecipes(taggedRecipes, false);
+
       results.push({ query, count:recipes.length, type:drink?"drink":"food" });
     } catch(err) { results.push({ query, error:err.message }); }
   }

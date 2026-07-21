@@ -1,4 +1,5 @@
 import { callAI } from "./ai-provider.js";
+import { indexRecipes } from "./recipe-index.js";
 
 const hotCache = new Map();
 const rateLimits = new Map();
@@ -151,6 +152,7 @@ export default async function handler(req, res) {
 
     hotCache.set(cacheKey, { data:withImages, time:Date.now() });
     saveToFirestore(cleanQ, withImages, isPro);
+    indexRecipes(withImages, isPro); // individually queryable — powers category filters + recommendations
 
     // Only NOW, after confirmed success, spend the user's free search.
     let newCount = limitInfo.current;

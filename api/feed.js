@@ -1,4 +1,5 @@
 import { callAI } from "./ai-provider.js";
+import { queryRecipeIndex, indexRecipes } from "./recipe-index.js";
 
 const cache = new Map();
 const rateLimit = new Map();
@@ -35,6 +36,33 @@ async function getFromFirestore(query) {
   } catch { return null; }
 }
 
+// Server-side preference fetch — server is the source of truth, not a
+// client-sent blob that can go stale mid-session or bloat the request.
+async function getServerPreferences(uid) {
+  if (!uid) return null;
+  try {
+    const pid = process.env.FIREBASE_PROJECT_ID || "mama-k-recipies";
+    const r = await fetch(`https://firestore.googleapis.com/v1/projects/${pid}/databases/(default)/documents/users/${uid}`);
+    if (!r.ok) return null;
+    const d = await r.json();
+    const prefFields = d?.fields?.preferences?.mapValue?.fields;
+    if (!prefFields) return null;
+    const decodeMap = (mapVal) => {
+      const out = {};
+      for (const [k, v] of Object.entries(mapVal?.mapValue?.fields || {})) {
+        out[k] = v.integerValue !== undefined ? parseInt(v.integerValue) : (v.doubleValue ?? 0);
+      }
+      return out;
+    };
+    return {
+      cuisines: decodeMap(prefFields.cuisines),
+      regions: decodeMap(prefFields.regions),
+      dietary: decodeMap(prefFields.dietary),
+      difficulty: decodeMap(prefFields.difficulty),
+    };
+  } catch { return null; }
+}
+
 function buildQuery(prefs, recent, batch) {
   const cuisines = Object.entries(prefs?.cuisines||{}).sort((a,b)=>b[1]-a[1]).map(([k])=>k.replace(/_/g," "));
   const regions = Object.entries(prefs?.regions||{}).sort((a,b)=>b[1]-a[1]).map(([k])=>k.replace(/_/g," "));
@@ -56,7 +84,6 @@ function buildQuery(prefs, recent, batch) {
     isAfrican ? "African fusion modern recipes" : `modern fusion ${cuisines[0]||"world cuisine"}`,
   ];
 
-  // Every 3rd batch use recent search for relevance
   if (recent?.length && batch%3===0) {
     const r = recent[Math.floor(Math.random()*Math.min(3,recent.length))];
     if (r?.query) return `dishes similar to ${r.query}`;
@@ -75,7 +102,7 @@ export default async function handler(req, res) {
   const ip = req.headers["x-forwarded-for"]?.split(",")[0]||"unknown";
   if (limited(ip)) return res.status(429).json({error:"Too many requests"});
 
-  const { preferences, recentSearches, batch=0, isPro=false, filter="What to Eat" } = req.body||{};
+  const { preferences: clientPrefs, recentSearches, batch=0, isPro=false, filter="What to Eat", uid } = req.body||{};
   const batchNum = Number(batch);
   const limit = isPro ? 999 : 5;
 
@@ -83,7 +110,24 @@ export default async function handler(req, res) {
     return res.status(200).json({ recipes:[], done:true, upgradePrompt:!isPro });
   }
 
-  // Build query based on active filter
+  // Server fetches preferences directly — avoids trusting a client blob
+  // that can be stale from mid-session searches/bookmarks. Falls back to
+  // whatever the client sent only if the server-side fetch comes up empty
+  // (e.g. brand new user, first load).
+  const serverPrefs = await getServerPreferences(uid);
+  const preferences = serverPrefs || clientPrefs || null;
+
+  // 1. Real category — try the indexed collection first (true field query,
+  //    zero AI cost, zero guessing). Falls back to guessed queries only if
+  //    the index doesn't have enough entries yet for this category.
+  if (filter !== "What to Eat" && filter !== "All") {
+    const indexed = await queryRecipeIndex({ category: filter, limitCount: isPro ? 6 : 4 });
+    if (indexed.length >= (isPro ? 4 : 2)) {
+      return res.status(200).json({ recipes: indexed, query: filter, batch: batchNum, cached: true, source: "index" });
+    }
+  }
+
+  // Build query based on active filter — fallback path
   const CATEGORY_QUERIES = {
     "African": ["popular West African dishes","East African cuisine","North African recipes","South African food","Nigerian street food","Ghanaian dishes"],
     "Asian": ["Japanese cuisine dishes","Korean food recipes","Chinese authentic dishes","Thai street food","Vietnamese recipes","Indian curry dishes"],
@@ -108,20 +152,17 @@ export default async function handler(req, res) {
   }
   const cacheKey = `feed__${query}__${isPro}`;
 
-  // Memory cache
   const hot = cache.get(cacheKey);
   if (hot && Date.now()-hot.time < 1800000) {
     return res.status(200).json({ recipes:hot.data, query, batch:batchNum, cached:true });
   }
 
-  // Firestore database cache — serve existing recipes first
   const dbRecipes = await getFromFirestore(query);
   if (dbRecipes?.length) {
     cache.set(cacheKey, { data:dbRecipes, time:Date.now() });
     return res.status(200).json({ recipes:dbRecipes, query, batch:batchNum, cached:true });
   }
 
-  // Generate with AI only on cache miss
   const count = isPro ? 6 : 4;
   try {
     const prompt = `Culinary database. Return ONLY valid JSON array of exactly ${count} diverse recipes for: "${query}". Each: {"title":string,"emoji":emoji,"tagline":max 10 words,"time":string,"difficulty":"Easy"|"Medium"|"Advanced","servings":number,"calories":number,"cuisine":string,"region":string,"tags":[2 strings],"ingredients":[6-10 strings],"steps":[4-6 strings]}. ONLY raw JSON array.`;
@@ -141,6 +182,7 @@ export default async function handler(req, res) {
     }));
 
     cache.set(cacheKey, { data:withImages, time:Date.now() });
+    indexRecipes(withImages, isPro); // makes this batch queryable for future category/recommendation lookups
     return res.status(200).json({ recipes:withImages, query, batch:batchNum, done:false });
   } catch(err) {
     return res.status(500).json({ error:err.message });

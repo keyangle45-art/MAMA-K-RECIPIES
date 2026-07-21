@@ -353,40 +353,37 @@ const DetailView = ({ recipe, bookmarked, onBM, onBack, onOpen, isPro, onUpgrade
   const [recsLoading, setRecsLoading] = useState(true);
   const [liked, setLiked] = useState(false);
 
+  // Recommendations — always Firestore-indexed, zero AI cost, no query-guessing.
   useEffect(() => {
     let cancelled = false;
     setRecsLoading(true);
     setRecs([]);
 
-    const attempt = async (q) => {
-      try {
-        const r = await callAPI(q, false);
-        return (r || []).filter(x => x.title !== recipe.title);
-      } catch { return []; }
-    };
-
-    (async () => {
-      // Try the queries most likely to already be seeded in Firestore first —
-      // these resolve instantly and never touch the AI. Only fall back to a
-      // novel compound phrase (which requires a live AI call) as a last resort.
-      const candidates = [
-        recipe.region ? `Popular ${recipe.region} Dishes` : null,
-        recipe.cuisine ? `Classic ${recipe.cuisine} Recipes` : null,
-        recipe.region ? `${recipe.region} cuisine similar to ${recipe.title}` : `similar to ${recipe.title}`,
-      ].filter(Boolean);
-
-      for (const q of candidates) {
-        if (cancelled) return;
-        const found = await attempt(q);
-        if (found.length > 0) {
-          if (!cancelled) { setRecs(found.slice(0, 4)); setRecsLoading(false); }
-          return;
-        }
-      }
-      if (!cancelled) setRecsLoading(false);
-    })();
+    fetch("/api/recommendations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: recipe.title,
+        region: recipe.region,
+        cuisine: recipe.cuisine,
+        category: recipe.region, // region doubles as a reasonable category hint
+        isPro,
+      }),
+    })
+      .then(r => r.json())
+      .then(d => { if (!cancelled) { setRecs((d.recipes || []).slice(0, 4)); setRecsLoading(false); } })
+      .catch(() => { if (!cancelled) setRecsLoading(false); });
 
     return () => { cancelled = true; };
+  }, [recipe.title]);
+
+  // Fire-and-forget view tracking — never blocks rendering.
+  useEffect(() => {
+    fetch("/api/track-view", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: recipe.title, isPro }),
+    }).catch(() => {});
   }, [recipe.title]);
 
   return (
@@ -565,9 +562,36 @@ const RecipeTools = ({ recipe, isPro, onUpgrade }) => {
   const [partySize, setPartySize] = useState(10);
   const [shoppingDone, setShoppingDone] = useState({});
 
+  // AI transformation state — keyed by tool id so switching between
+  // High Protein / Low Cal / etc keeps each one cached in memory for the session
+  const [transforms, setTransforms] = useState({});
+  const [transformLoading, setTransformLoading] = useState(null);
+  const [transformError, setTransformError] = useState(null);
+
+  const AI_TOOL_TYPES = { protein: "protein", lowcal: "lowcal", veggie: "veggie", airfryer: "airfryer", budget: "budget" };
+
   const handleTool = (tool) => {
     if (tool.pro && !isPro) { onUpgrade(); return; }
-    setActiveTool(activeTool === tool.id ? null : tool.id);
+    const next = activeTool === tool.id ? null : tool.id;
+    setActiveTool(next);
+
+    // Fetch the AI transformation the first time this tool is opened for this recipe
+    if (next && AI_TOOL_TYPES[next] && !transforms[next]) {
+      setTransformLoading(next);
+      setTransformError(null);
+      fetch("/api/transform", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recipe, transformType: AI_TOOL_TYPES[next], isPro }),
+      })
+        .then(r => r.json())
+        .then(d => {
+          if (d.result) setTransforms(prev => ({ ...prev, [next]: d.result }));
+          else setTransformError(d.error || "Something went wrong");
+        })
+        .catch(() => setTransformError("Something went wrong"))
+        .finally(() => setTransformLoading(null));
+    }
   };
 
   // Scale ingredient quantities for party mode
@@ -689,11 +713,66 @@ const RecipeTools = ({ recipe, isPro, onUpgrade }) => {
           ))}
         </div>
       )}
+      {/* AI Transformation panels — High Protein / Low Cal / Vegetarian / Air Fryer / Budget */}
+      {activeTool && AI_TOOL_TYPES[activeTool] && (
+        <div style={{ background: B.bg, borderRadius: "16px", padding: "20px", animation: "fadeUp 0.3s ease" }}>
+          {transformLoading === activeTool && (
+            <div style={{ textAlign: "center", padding: "24px 0" }}>
+              <div style={{ display: "flex", gap: "6px", justifyContent: "center", marginBottom: "12px" }}>
+                {[0,1,2].map(i => <div key={i} style={{ width: "6px", height: "6px", borderRadius: "50%", background: B.orange, animation: "pulse 1.2s ease infinite", animationDelay: `${i*0.2}s` }} />)}
+              </div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.muted }}>
+                Adapting this recipe...
+              </div>
+            </div>
+          )}
+
+          {transformError && transformLoading !== activeTool && (
+            <div style={{ textAlign: "center", padding: "20px 0" }}>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: "#DC2626", marginBottom: "12px" }}>{transformError}</div>
+              <button onClick={() => handleTool({ id: activeTool, pro: true })} className="btn-primary" style={{ padding: "8px 20px", borderRadius: "8px", fontSize: "13px" }}>Try Again</button>
+            </div>
+          )}
+
+          {transforms[activeTool] && transformLoading !== activeTool && (() => {
+            const t = transforms[activeTool];
+            return (
+              <>
+                <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "15px", color: B.dark, marginBottom: "4px" }}>{t.title}</div>
+                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted, marginBottom: "16px" }}>{t.tagline}</div>
+
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "16px" }}>
+                  {[["⏱", t.time], ["👥", `${t.servings} servings`], ["🔥", `~${t.calories} cal`], t.protein_grams ? ["💪", `${t.protein_grams}g protein`] : null, t.estimated_cost ? ["💰", t.estimated_cost] : null].filter(Boolean).map(([icon, val], i) => (
+                    <div key={i} style={{ background: B.white, border: `1px solid ${B.border}`, borderRadius: "10px", padding: "6px 12px", fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.dark, display: "flex", alignItems: "center", gap: "5px" }}>
+                      <span>{icon}</span>{val}
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", fontWeight: 700, color: B.muted, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "10px" }}>Ingredients</div>
+                {(t.ingredients || []).map((ing, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "7px 0", borderBottom: `1px solid ${B.border}` }}>
+                    <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: B.orange, flexShrink: 0 }} />
+                    <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.dark }}>{ing}</span>
+                  </div>
+                ))}
+
+                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", fontWeight: 700, color: B.muted, textTransform: "uppercase", letterSpacing: "0.08em", margin: "16px 0 10px" }}>Steps</div>
+                {(t.steps || []).map((step, i) => (
+                  <div key={i} style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
+                    <div style={{ width: "20px", height: "20px", borderRadius: "50%", background: B.orange, color: "#fff", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Poppins', sans-serif", fontSize: "10px", fontWeight: 700 }}>{i + 1}</div>
+                    <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.dark, lineHeight: 1.6 }}>{step}</span>
+                  </div>
+                ))}
+              </>
+            );
+          })()}
+        </div>
+      )}
     </div>
   );
 };
 
-/* ─── Home Feed ──────────────────────────────────────────── */
 const HomeFeed = ({ user, isPro, preferences, recentSearches, bookmarks, onBM, onOpen, onUpgrade, activeFilter }) => {
   const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useState(false);

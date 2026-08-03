@@ -835,7 +835,7 @@ const HomeFeed = ({ user, isPro, preferences, recentSearches, bookmarks, onBM, o
           >
             <RecipeCard
               r={r}
-              tall={i % 5 === 0}
+              tall={i > 0 && i % 5 === 0}
               onOpen={() => { clearDwell(r.title); if (user?.uid) trackEngagement(user.uid, { type: "open", recipe: r }); onOpen(r); }}
               bookmarked={bookmarks.some(b => b.title === r.title)}
               onBM={() => onBM(r)}
@@ -859,6 +859,7 @@ const HomeFeed = ({ user, isPro, preferences, recentSearches, bookmarks, onBM, o
         <div onClick={onUpgrade} style={{
           background: B.dark, borderRadius: "20px", padding: "24px 20px",
           cursor: "pointer", marginTop: "8px", transition: "opacity 0.2s",
+          textAlign: "center",
         }}
           onMouseEnter={e => e.currentTarget.style.opacity = "0.92"}
           onMouseLeave={e => e.currentTarget.style.opacity = "1"}
@@ -941,18 +942,20 @@ const SearchView = ({ user, isPro, bookmarks, onBM, onOpen, onShowPaywall, searc
     <div style={{ background: B.white, minHeight: "100vh", paddingBottom: "80px" }}>
       {/* Search bar */}
       <div style={{ padding: "12px 16px", position: "sticky", top: 0, background: B.white, zIndex: 80, borderBottom: `1px solid ${B.border}` }}>
-        <div style={{ display: "flex", alignItems: "center", background: B.bg, borderRadius: "12px", border: `1px solid ${B.border}` }}>
-          <svg style={{ margin: "0 10px 0 14px", color: B.muted, flexShrink: 0 }} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input ref={inputRef} value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && doSearch()}
-            placeholder="Jollof Rice, Pasta, Healthy Breakfast..."
-            style={{ flex: 1, border: "none", outline: "none", padding: "13px 0", fontFamily: "'Inter', sans-serif", fontSize: "15px", background: "transparent", color: B.dark }}
-          />
-          {query && <button onClick={() => { setQuery(""); setResults([]); setSearched(false); }} style={{ background: "none", border: "none", padding: "0 14px", cursor: "pointer", color: B.muted, fontSize: "18px" }}>×</button>}
-          <button onClick={doSearch} className="btn-primary" style={{ margin: "5px", borderRadius: "9px", padding: "9px 16px", fontSize: "13px" }}>Search</button>
+        <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
+          <div style={{ display: "flex", alignItems: "center", background: B.bg, borderRadius: "12px", border: `1px solid ${B.border}` }}>
+            <svg style={{ margin: "0 10px 0 14px", color: B.muted, flexShrink: 0 }} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input ref={inputRef} value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && doSearch()}
+              placeholder="Jollof Rice, Pasta, Healthy Breakfast..."
+              style={{ flex: 1, border: "none", outline: "none", padding: "13px 0", fontFamily: "'Inter', sans-serif", fontSize: "15px", background: "transparent", color: B.dark }}
+            />
+            {query && <button onClick={() => { setQuery(""); setResults([]); setSearched(false); }} style={{ background: "none", border: "none", padding: "0 14px", cursor: "pointer", color: B.muted, fontSize: "18px" }}>×</button>}
+            <button onClick={doSearch} className="btn-primary" style={{ margin: "5px", borderRadius: "9px", padding: "9px 16px", fontSize: "13px" }}>Search</button>
+          </div>
         </div>
       </div>
 
-      <div style={{ padding: "16px" }}>
+      <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "16px" }}>
         {!searched && (
           <>
             {searchHistory.length > 0 && (
@@ -1508,16 +1511,14 @@ function AppInner() {
       )}
 
       {tab === "search" && (
-        <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
-          <SearchView
-            user={user} isPro={isPro} bookmarks={bookmarks}
-            onBM={toggleBM} onOpen={openRecipe}
-            onShowPaywall={() => setShowPaywall(true)}
-            searchHistory={searchHistory}
-            searchCount={searchCount}
-            onSyncCount={(newCount) => setSearchCount(newCount)}
-          />
-        </div>
+        <SearchView
+          user={user} isPro={isPro} bookmarks={bookmarks}
+          onBM={toggleBM} onOpen={openRecipe}
+          onShowPaywall={() => setShowPaywall(true)}
+          searchHistory={searchHistory}
+          searchCount={searchCount}
+          onSyncCount={(newCount) => setSearchCount(newCount)}
+        />
       )}
 
       {tab === "saved" && (
@@ -1527,24 +1528,22 @@ function AppInner() {
       )}
 
       {tab === "profile" && (
-        <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
-          <ErrorBoundary>
-            <ProfileView
-              user={user} isPro={isPro} subscription={subscription}
-              onSignIn={async () => { try { await signInWithGoogle(); } catch {} }}
-              onSignOut={() => { signOutUser(); setIsPro(false); setSearchCount(0); setBookmarks([]); setSearchHistory([]); setPreferences(null); setSubscription({ status: "free", isPro: false, endDate: null }); }}
-              onUpgrade={handleUpgrade}
-              searchCount={searchCount}
-              searchHistory={searchHistory}
-              bookmarks={bookmarks}
-              loadingPayment={loadingPayment}
-              preferences={preferences}
-              onOpen={openRecipe}
-              onGoToSaved={() => handleTabChange("saved")}
-              onCancelSubscription={() => { setCancelStep(1); setShowCancelModal(true); }}
-            />
-          </ErrorBoundary>
-        </div>
+        <ErrorBoundary>
+          <ProfileView
+            user={user} isPro={isPro} subscription={subscription}
+            onSignIn={async () => { try { await signInWithGoogle(); } catch {} }}
+            onSignOut={() => { signOutUser(); setIsPro(false); setSearchCount(0); setBookmarks([]); setSearchHistory([]); setPreferences(null); setSubscription({ status: "free", isPro: false, endDate: null }); }}
+            onUpgrade={handleUpgrade}
+            searchCount={searchCount}
+            searchHistory={searchHistory}
+            bookmarks={bookmarks}
+            loadingPayment={loadingPayment}
+            preferences={preferences}
+            onOpen={openRecipe}
+            onGoToSaved={() => handleTabChange("saved")}
+            onCancelSubscription={() => { setCancelStep(1); setShowCancelModal(true); }}
+          />
+        </ErrorBoundary>
       )}
 
       {/* Bottom nav — full width */}

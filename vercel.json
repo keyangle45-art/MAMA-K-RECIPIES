@@ -6,9 +6,11 @@
     "api/webhook.js": { "maxDuration": 15 },
     "api/seed.js": { "maxDuration": 60 },
     "api/reindex-existing.js": { "maxDuration": 30 },
-    "api/recommendations.js": { "maxDuration": 15 },
+    "api/recommendations.js": { "maxDuration": 25 },
     "api/transform.js": { "maxDuration": 20 },
-    "api/track-view.js": { "maxDuration": 10 }
+    "api/track-view.js": { "maxDuration": 10 },
+    "api/index-status.js": { "maxDuration": 15 },
+    "api/debug.js": { "maxDuration": 15 }
   },
   "headers": [
     {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, Component } from "react";
 import { auth, signInWithGoogle, signOutUser, getServerSearchCount, incrementServerSearchCount, syncBookmarksToFirestore, loadBookmarksFromFirestore, getSubscriptionStatus, logSearchHistory, getSearchHistory, updatePreferenceProfile, getAdaptiveSectionOrder, trackEngagement, cancelSubscription } from "./firebase.js";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, deleteUser as fbDeleteUser } from "firebase/auth";
 
 /* ─── Error Boundary ─────────────────────────────────────── */
 /* Catches render crashes so users see a real error instead of a blank white screen.
@@ -75,18 +75,17 @@ const callAPI = async (query, isPro = false, uid = null) => {
   return result.recipes;
 };
 
-// Returns { recipes, searchCount, limitReached, error } — server is the single source of truth
-const callAPIDetailed = async (query, isPro = false, uid = null) => {
-  const key = `${query.toLowerCase()}__${isPro}`;
+const callAPIDetailed = async (query, isPro = false, uid = null, aiSearch = false) => {
+  const key = `${query.toLowerCase()}__${isPro}__${aiSearch}`;
   if (recipeCache.has(key)) return { recipes: recipeCache.get(key), searchCount: null, limitReached: false };
   const res = await fetch("/api/recipes", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query, isPro, uid }),
+    body: JSON.stringify({ query, isPro, uid, aiSearch }),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    return { recipes: [], searchCount: data.searchCount ?? null, limitReached: !!data.limitReached, error: data.error };
+    return { recipes: [], searchCount: data.searchCount ?? null, limitReached: !!data.limitReached, proRequired: !!data.proRequired, error: data.error };
   }
   const recipes = data.recipes || [];
   if (recipes.length > 0) recipeCache.set(key, recipes);
@@ -115,6 +114,7 @@ const STYLES = `
   @keyframes fadeIn   { from { opacity:0; } to { opacity:1; } }
   @keyframes scaleIn  { from { opacity:0; transform:scale(0.94); } to { opacity:1; transform:scale(1); } }
   @keyframes pulse    { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  @keyframes spin     { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
   @keyframes shimmer  { 0%{background-position:-600px 0} 100%{background-position:600px 0} }
   @keyframes imgFade  { from{opacity:0} to{opacity:1} }
   @keyframes slideUp  { from{transform:translateY(100%);opacity:0} to{transform:translateY(0);opacity:1} }
@@ -346,47 +346,44 @@ const Paywall = ({ user, onSignIn, onDismiss, onUpgrade, loading }) => (
 );
 
 /* ─── Detail View ────────────────────────────────────────── */
-const DetailView = ({ recipe, bookmarked, onBM, onBack, onOpen, isPro, onUpgrade }) => {
+const DetailView = ({ recipe, bookmarked, onBM, onBack, onOpen, isPro, onUpgrade, user }) => {
   const [tab, setTab] = useState("ingredients");
   const [imgLoaded, setImgLoaded] = useState(false);
   const [recs, setRecs] = useState([]);
   const [recsLoading, setRecsLoading] = useState(true);
   const [liked, setLiked] = useState(false);
 
+  // Recommendations — always Firestore-indexed, zero AI cost, no query-guessing.
   useEffect(() => {
     let cancelled = false;
     setRecsLoading(true);
     setRecs([]);
 
-    const attempt = async (q) => {
-      try {
-        const r = await callAPI(q, false);
-        return (r || []).filter(x => x.title !== recipe.title);
-      } catch { return []; }
-    };
-
-    (async () => {
-      // Try the queries most likely to already be seeded in Firestore first —
-      // these resolve instantly and never touch the AI. Only fall back to a
-      // novel compound phrase (which requires a live AI call) as a last resort.
-      const candidates = [
-        recipe.region ? `Popular ${recipe.region} Dishes` : null,
-        recipe.cuisine ? `Classic ${recipe.cuisine} Recipes` : null,
-        recipe.region ? `${recipe.region} cuisine similar to ${recipe.title}` : `similar to ${recipe.title}`,
-      ].filter(Boolean);
-
-      for (const q of candidates) {
-        if (cancelled) return;
-        const found = await attempt(q);
-        if (found.length > 0) {
-          if (!cancelled) { setRecs(found.slice(0, 4)); setRecsLoading(false); }
-          return;
-        }
-      }
-      if (!cancelled) setRecsLoading(false);
-    })();
+    fetch("/api/recommendations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: recipe.title,
+        region: recipe.region,
+        cuisine: recipe.cuisine,
+        category: recipe.region, // region doubles as a reasonable category hint
+        isPro,
+      }),
+    })
+      .then(r => r.json())
+      .then(d => { if (!cancelled) { setRecs((d.recipes || []).slice(0, 4)); setRecsLoading(false); } })
+      .catch(() => { if (!cancelled) setRecsLoading(false); });
 
     return () => { cancelled = true; };
+  }, [recipe.title]);
+
+  // Fire-and-forget view tracking — never blocks rendering.
+  useEffect(() => {
+    fetch("/api/track-view", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: recipe.title, isPro }),
+    }).catch(() => {});
   }, [recipe.title]);
 
   return (
@@ -527,7 +524,7 @@ const DetailView = ({ recipe, bookmarked, onBM, onBack, onOpen, isPro, onUpgrade
         )}
 
         {/* Recipe Tools */}
-        <RecipeTools recipe={recipe} isPro={isPro} onUpgrade={onUpgrade} />
+        <RecipeTools recipe={recipe} isPro={isPro} onUpgrade={onUpgrade} user={user} />
 
         {/* More like this */}
         {(recsLoading || recs.length > 0) && (
@@ -556,31 +553,94 @@ const TOOLS = [
   { id: "protein",  label: "High Protein",  icon: "💪", pro: true,  desc: "Protein optimised" },
   { id: "lowcal",   label: "Low Calorie",   icon: "🥗", pro: true,  desc: "Under 400 calories" },
   { id: "veggie",   label: "Vegetarian",    icon: "🌱", pro: true,  desc: "Plant based version" },
+  { id: "vegan",    label: "Vegan",         icon: "🥦", pro: true,  desc: "No animal products" },
   { id: "airfryer", label: "Air Fryer",     icon: "⚡", pro: true,  desc: "Air fryer adapted" },
   { id: "budget",   label: "Budget",        icon: "💰", pro: true,  desc: "Student friendly" },
+  { id: "findnear", label: "Find Near Me",  icon: "📍", pro: true,  desc: "Nearby restaurants" },
 ];
 
-const RecipeTools = ({ recipe, isPro, onUpgrade }) => {
+const ASK_AI_SUGGESTIONS = ["Can I freeze this?", "What can I serve with it?", "Is this spicy?", "Can I cook this tomorrow?"];
+
+const RecipeTools = ({ recipe, isPro, onUpgrade, user }) => {
   const [activeTool, setActiveTool] = useState(null);
   const [partySize, setPartySize] = useState(10);
   const [shoppingDone, setShoppingDone] = useState({});
+  const [transforms, setTransforms] = useState({});
+  const [transformLoading, setTransformLoading] = useState(null);
+  const [transformError, setTransformError] = useState(null);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatLoaded, setChatLoaded] = useState(false);
+  const chatEndRef = useRef(null);
+  const [locStatus, setLocStatus] = useState("idle");
+  const [locCoords, setLocCoords] = useState(null);
+  const [locText, setLocText] = useState("");
+  const [restaurants, setRestaurants] = useState(null);
+  const [restaurantsLoading, setRestaurantsLoading] = useState(false);
+  const [restaurantsError, setRestaurantsError] = useState(null);
+  const [placesConfigured, setPlacesConfigured] = useState(true);
+
+  const AI_TOOL_TYPES = { protein: "protein", lowcal: "lowcal", veggie: "veggie", vegan: "vegan", airfryer: "airfryer", budget: "budget" };
+
+  useEffect(() => { if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
+
+  const loadConversation = () => {
+    if (chatLoaded || !user?.uid) return;
+    fetch("/api/ai-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "get-conversation", uid: user.uid, recipeTitle: recipe.title }) })
+      .then(r => r.json()).then(d => { setChatMessages(d.messages || []); setChatLoaded(true); }).catch(() => setChatLoaded(true));
+  };
+
+  const sendAskAI = (questionOverride) => {
+    const question = (questionOverride || chatInput).trim();
+    if (!question || !user?.uid) return;
+    setChatInput(""); setChatLoading(true);
+    setChatMessages(prev => [...prev, { role: "user", text: question, at: Date.now() }]);
+    fetch("/api/ai-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "ask", uid: user.uid, isPro, recipeTitle: recipe.title, recipeContext: { ingredients: recipe.ingredients, steps: recipe.steps }, question }) })
+      .then(r => r.json())
+      .then(d => { if (d.messages) setChatMessages(d.messages); else setChatMessages(prev => [...prev, { role: "assistant", text: d.error || "Something went wrong.", at: Date.now() }]); })
+      .catch(() => setChatMessages(prev => [...prev, { role: "assistant", text: "Something went wrong. Try again.", at: Date.now() }]))
+      .finally(() => setChatLoading(false));
+  };
+
+  const requestLocationAndSearch = () => {
+    if (!navigator.geolocation) { setLocStatus("denied"); return; }
+    setLocStatus("requesting");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { const c = { lat: pos.coords.latitude, lng: pos.coords.longitude }; setLocCoords(c); setLocStatus("granted"); fetchRestaurants({ lat: c.lat, lng: c.lng }); },
+      () => setLocStatus("denied"), { timeout: 8000 }
+    );
+  };
+
+  const fetchRestaurants = ({ lat, lng, locationText } = {}) => {
+    setRestaurantsLoading(true); setRestaurantsError(null);
+    const dishOrCuisine = recipe.cuisine || recipe.region || recipe.title;
+    fetch("/api/ai-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "restaurants", dishOrCuisine, lat, lng, locationText }) })
+      .then(r => r.json())
+      .then(d => { if (!d.configured) { setPlacesConfigured(false); setRestaurants([]); return; } if (d.error) setRestaurantsError(d.error); setRestaurants(d.restaurants || []); })
+      .catch(() => setRestaurantsError("Couldn't load restaurants right now"))
+      .finally(() => setRestaurantsLoading(false));
+  };
 
   const handleTool = (tool) => {
     if (tool.pro && !isPro) { onUpgrade(); return; }
-    setActiveTool(activeTool === tool.id ? null : tool.id);
+    const next = activeTool === tool.id ? null : tool.id;
+    setActiveTool(next);
+    if (next === "ask") loadConversation();
+    if (next && AI_TOOL_TYPES[next] && !transforms[next]) {
+      setTransformLoading(next); setTransformError(null);
+      fetch("/api/transform", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ recipe, transformType: AI_TOOL_TYPES[next], isPro }) })
+        .then(r => r.json())
+        .then(d => { if (d.result) setTransforms(prev => ({ ...prev, [next]: d.result })); else setTransformError(d.error || "Something went wrong"); })
+        .catch(() => setTransformError("Something went wrong"))
+        .finally(() => setTransformLoading(null));
+    }
   };
 
-  // Scale ingredient quantities for party mode
   const baseServings = recipe.servings || 4;
   const scale = partySize / baseServings;
-  const scaleIngredient = (ing) => {
-    return ing.replace(/(\d+(\.\d+)?)/g, (match) => {
-      const scaled = parseFloat(match) * scale;
-      return scaled % 1 === 0 ? scaled.toString() : scaled.toFixed(1);
-    });
-  };
+  const scaleIngredient = (ing) => ing.replace(/(\d+(\.\d+)?)/g, (match) => { const s = parseFloat(match) * scale; return s % 1 === 0 ? s.toString() : s.toFixed(1); });
 
-  // Group ingredients for shopping list
   const GROUPS = {
     "Produce": ["tomato","onion","garlic","pepper","lettuce","spinach","cucumber","lemon","lime","carrot","potato","mushroom","ginger","celery","parsley","coriander","basil","chili","leek","avocado","plantain"],
     "Protein": ["chicken","beef","pork","lamb","fish","shrimp","prawn","egg","tofu","beans","lentil","turkey","salmon","tuna","crab","meat","bacon","sausage"],
@@ -591,11 +651,8 @@ const RecipeTools = ({ recipe, isPro, onUpgrade }) => {
   const groupIngredients = (ingredients) => {
     const grouped = { "Produce": [], "Protein": [], "Dairy": [], "Grains": [], "Spices & Sauces": [], "Other": [] };
     ingredients.forEach(ing => {
-      const lower = ing.toLowerCase();
-      let placed = false;
-      for (const [group, keywords] of Object.entries(GROUPS)) {
-        if (keywords.some(k => lower.includes(k))) { grouped[group].push(ing); placed = true; break; }
-      }
+      const lower = ing.toLowerCase(); let placed = false;
+      for (const [group, keywords] of Object.entries(GROUPS)) { if (keywords.some(k => lower.includes(k))) { grouped[group].push(ing); placed = true; break; } }
       if (!placed) grouped["Other"].push(ing);
     });
     return Object.entries(grouped).filter(([,v]) => v.length > 0);
@@ -606,49 +663,34 @@ const RecipeTools = ({ recipe, isPro, onUpgrade }) => {
       <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "17px", color: B.dark, marginBottom: "4px" }}>Recipe Tools</div>
       <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted, marginBottom: "14px" }}>Adapt this recipe to your needs</div>
 
-      {/* Tool chips */}
       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "16px" }}>
         {TOOLS.map(tool => (
           <button key={tool.id} onClick={() => handleTool(tool)} style={{
-            display: "flex", alignItems: "center", gap: "5px",
-            padding: "7px 12px", borderRadius: "20px", cursor: "pointer",
+            display: "flex", alignItems: "center", gap: "5px", padding: "7px 12px", borderRadius: "20px", cursor: "pointer",
             fontFamily: "'Inter', sans-serif", fontSize: "12px", fontWeight: 500,
             border: `1px solid ${activeTool === tool.id ? B.orange : B.border}`,
             background: activeTool === tool.id ? "#FFF7ED" : B.bg,
-            color: activeTool === tool.id ? B.orange : B.dark,
-            transition: "all 0.18s",
+            color: activeTool === tool.id ? B.orange : B.dark, transition: "all 0.18s",
           }}>
-            <span>{tool.icon}</span>
-            {tool.label}
+            <span>{tool.icon}</span>{tool.label}
             {tool.pro && !isPro && <span style={{ fontSize: "9px", background: B.orange, color: "#fff", borderRadius: "4px", padding: "1px 5px", fontWeight: 700 }}>PRO</span>}
           </button>
         ))}
       </div>
 
-      {/* Party Mode panel */}
       {activeTool === "party" && (
         <div style={{ background: B.bg, borderRadius: "16px", padding: "20px", animation: "fadeUp 0.3s ease" }}>
           <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "15px", color: B.dark, marginBottom: "4px" }}>🎉 Party Mode</div>
           <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted, marginBottom: "16px" }}>Scaled for {partySize} people (original: {baseServings} servings)</div>
-
           <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "16px" }}>
             {[10, 20, 30, 50, 75, 100].map(n => (
-              <button key={n} onClick={() => setPartySize(n)} style={{
-                padding: "6px 14px", borderRadius: "20px", cursor: "pointer",
-                fontFamily: "'Inter', sans-serif", fontSize: "13px", fontWeight: 600,
-                border: `1px solid ${partySize === n ? B.orange : B.border}`,
-                background: partySize === n ? B.orange : B.white,
-                color: partySize === n ? "#fff" : B.dark, transition: "all 0.15s",
-              }}>{n}</button>
+              <button key={n} onClick={() => setPartySize(n)} style={{ padding: "6px 14px", borderRadius: "20px", cursor: "pointer", fontFamily: "'Inter', sans-serif", fontSize: "13px", fontWeight: 600, border: `1px solid ${partySize === n ? B.orange : B.border}`, background: partySize === n ? B.orange : B.white, color: partySize === n ? "#fff" : B.dark, transition: "all 0.15s" }}>{n}</button>
             ))}
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
               <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted }}>Custom:</span>
-              <input type="number" value={partySize} min={1} max={500} onChange={e => setPartySize(parseInt(e.target.value)||1)}
-                style={{ width: "60px", padding: "5px 8px", border: `1px solid ${B.border}`, borderRadius: "8px", fontFamily: "'Inter', sans-serif", fontSize: "13px", textAlign: "center" }}
-              />
+              <input type="number" value={partySize} min={1} max={500} onChange={e => setPartySize(parseInt(e.target.value)||1)} style={{ width: "60px", padding: "5px 8px", border: `1px solid ${B.border}`, borderRadius: "8px", fontFamily: "'Inter', sans-serif", fontSize: "13px", textAlign: "center" }} />
             </div>
           </div>
-
           <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", fontWeight: 700, color: B.muted, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "10px" }}>Scaled Ingredients</div>
           {(recipe.ingredients || []).map((ing, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "9px 0", borderBottom: `1px solid ${B.border}` }}>
@@ -656,23 +698,15 @@ const RecipeTools = ({ recipe, isPro, onUpgrade }) => {
               <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.dark }}>{scaleIngredient(ing)}</span>
             </div>
           ))}
-          <div style={{ marginTop: "14px", fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted }}>
-            Est. total calories: ~{Math.round((recipe.calories || 0) * scale * baseServings)}
-          </div>
+          <div style={{ marginTop: "14px", fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted }}>Est. total calories: ~{Math.round((recipe.calories || 0) * scale * baseServings)}</div>
         </div>
       )}
 
-      {/* Shopping List panel */}
       {activeTool === "shopping" && (
         <div style={{ background: B.bg, borderRadius: "16px", padding: "20px", animation: "fadeUp 0.3s ease" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
             <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "15px", color: B.dark }}>🛒 Shopping List</div>
-            <button onClick={() => {
-              const text = `Shopping List — ${recipe.title}\n\n` + (recipe.ingredients || []).map(i => `□ ${i}`).join("\n");
-              navigator.clipboard?.writeText(text).then(() => alert("Copied to clipboard!"));
-            }} style={{ background: B.dark, color: "#fff", border: "none", borderRadius: "8px", padding: "6px 12px", cursor: "pointer", fontFamily: "'Inter', sans-serif", fontSize: "12px", fontWeight: 600 }}>
-              Copy all
-            </button>
+            <button onClick={() => { const text = `Shopping List — ${recipe.title}\n\n` + (recipe.ingredients || []).map(i => `□ ${i}`).join("\n"); navigator.clipboard?.writeText(text).then(() => alert("Copied to clipboard!")); }} style={{ background: B.dark, color: "#fff", border: "none", borderRadius: "8px", padding: "6px 12px", cursor: "pointer", fontFamily: "'Inter', sans-serif", fontSize: "12px", fontWeight: 600 }}>Copy all</button>
           </div>
           {groupIngredients(recipe.ingredients || []).map(([group, items]) => (
             <div key={group} style={{ marginBottom: "14px" }}>
@@ -689,17 +723,628 @@ const RecipeTools = ({ recipe, isPro, onUpgrade }) => {
           ))}
         </div>
       )}
+
+      {activeTool && AI_TOOL_TYPES[activeTool] && (
+        <div style={{ background: B.bg, borderRadius: "16px", padding: "20px", animation: "fadeUp 0.3s ease" }}>
+          {transformLoading === activeTool && (
+            <div style={{ textAlign: "center", padding: "24px 0" }}>
+              <div style={{ display: "flex", gap: "6px", justifyContent: "center", marginBottom: "12px" }}>
+                {[0,1,2].map(i => <div key={i} style={{ width: "6px", height: "6px", borderRadius: "50%", background: B.orange, animation: "pulse 1.2s ease infinite", animationDelay: `${i*0.2}s` }} />)}
+              </div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.muted }}>Adapting this recipe...</div>
+            </div>
+          )}
+          {transformError && transformLoading !== activeTool && (
+            <div style={{ textAlign: "center", padding: "20px 0" }}>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: "#DC2626", marginBottom: "12px" }}>{transformError}</div>
+              <button onClick={() => handleTool({ id: activeTool, pro: true })} className="btn-primary" style={{ padding: "8px 20px", borderRadius: "8px", fontSize: "13px" }}>Try Again</button>
+            </div>
+          )}
+          {transforms[activeTool] && transformLoading !== activeTool && (() => {
+            const t = transforms[activeTool];
+            return (
+              <>
+                <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "15px", color: B.dark, marginBottom: "4px" }}>{t.title}</div>
+                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted, marginBottom: t.substitution_note ? "8px" : "16px" }}>{t.tagline}</div>
+                {t.substitution_note && (
+                  <div style={{ background: "#FFF7ED", border: "1px solid #FED7AA", borderRadius: "10px", padding: "10px 12px", marginBottom: "16px", fontFamily: "'Inter', sans-serif", fontSize: "12px", color: "#9A3412" }}>{t.substitution_note}</div>
+                )}
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "16px" }}>
+                  {[["⏱", t.time], ["👥", `${t.servings} servings`], ["🔥", `~${t.calories} cal`], t.protein_grams ? ["💪", `${t.protein_grams}g protein`] : null, t.estimated_cost ? ["💰", t.estimated_cost] : null, t.cost_reduction_percent ? ["📉", `${t.cost_reduction_percent}% cheaper`] : null].filter(Boolean).map(([icon, val], i) => (
+                    <div key={i} style={{ background: B.white, border: `1px solid ${B.border}`, borderRadius: "10px", padding: "6px 12px", fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.dark, display: "flex", alignItems: "center", gap: "5px" }}><span>{icon}</span>{val}</div>
+                  ))}
+                </div>
+                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", fontWeight: 700, color: B.muted, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "10px" }}>Ingredients</div>
+                {(t.ingredients || []).map((ing, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "7px 0", borderBottom: `1px solid ${B.border}` }}>
+                    <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: B.orange, flexShrink: 0 }} />
+                    <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.dark }}>{ing}</span>
+                  </div>
+                ))}
+                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", fontWeight: 700, color: B.muted, textTransform: "uppercase", letterSpacing: "0.08em", margin: "16px 0 10px" }}>Steps</div>
+                {(t.steps || []).map((step, i) => (
+                  <div key={i} style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
+                    <div style={{ width: "20px", height: "20px", borderRadius: "50%", background: B.orange, color: "#fff", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Poppins', sans-serif", fontSize: "10px", fontWeight: 700 }}>{i + 1}</div>
+                    <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.dark, lineHeight: 1.6 }}>{step}</span>
+                  </div>
+                ))}
+              </>
+            );
+          })()}
+        </div>
+      )}
+
+      {activeTool === "ask" && (
+        <div style={{ background: B.bg, borderRadius: "16px", padding: "16px", animation: "fadeUp 0.3s ease" }}>
+          <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "14px", color: B.dark, marginBottom: "4px" }}>Ask AI about this recipe</div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", color: B.muted, marginBottom: "14px" }}>Substitutions, timing, storage — anything about {recipe.title}</div>
+          <div style={{ maxHeight: "320px", overflowY: "auto", marginBottom: "12px", display: "flex", flexDirection: "column", gap: "10px" }}>
+            {chatMessages.length === 0 && !chatLoading && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", padding: "4px 0" }}>
+                {ASK_AI_SUGGESTIONS.map(s => (
+                  <button key={s} onClick={() => sendAskAI(s)} style={{ background: B.white, border: `1px solid ${B.border}`, borderRadius: "16px", padding: "7px 12px", fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.dark, cursor: "pointer", transition: "all 0.15s" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = B.dark; e.currentTarget.style.color = "#fff"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = B.white; e.currentTarget.style.color = B.dark; }}
+                  >{s}</button>
+                ))}
+              </div>
+            )}
+            {chatMessages.map((m, i) => (
+              <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
+                <div style={{ maxWidth: "85%", padding: "9px 13px", borderRadius: m.role === "user" ? "14px 14px 4px 14px" : "14px 14px 14px 4px", background: m.role === "user" ? B.orange : B.white, color: m.role === "user" ? "#fff" : B.dark, fontFamily: "'Inter', sans-serif", fontSize: "13px", lineHeight: 1.5, border: m.role === "user" ? "none" : `1px solid ${B.border}` }}>{m.text}</div>
+              </div>
+            ))}
+            {chatLoading && (
+              <div style={{ display: "flex", justifyContent: "flex-start" }}>
+                <div style={{ padding: "10px 14px", borderRadius: "14px 14px 14px 4px", background: B.white, border: `1px solid ${B.border}`, display: "flex", gap: "5px" }}>
+                  {[0,1,2].map(i => <div key={i} style={{ width: "5px", height: "5px", borderRadius: "50%", background: B.muted, animation: "pulse 1.2s ease infinite", animationDelay: `${i*0.2}s` }} />)}
+                </div>
+              </div>
+            )}
+            <div ref={chatEndRef} />
+          </div>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <input value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === "Enter" && !chatLoading && sendAskAI()} placeholder="Ask anything about this recipe..." style={{ flex: 1, padding: "11px 14px", borderRadius: "12px", border: `1px solid ${B.border}`, fontFamily: "'Inter', sans-serif", fontSize: "13px", outline: "none" }} />
+            <button onClick={() => sendAskAI()} disabled={chatLoading || !chatInput.trim()} className="btn-primary" style={{ padding: "0 18px", borderRadius: "12px", fontSize: "13px", opacity: chatLoading || !chatInput.trim() ? 0.5 : 1 }}>Send</button>
+          </div>
+        </div>
+      )}
+
+      {activeTool === "findnear" && (
+        <div style={{ background: B.bg, borderRadius: "16px", padding: "18px", animation: "fadeUp 0.3s ease" }}>
+          {!placesConfigured ? (
+            <div style={{ textAlign: "center", padding: "16px 0" }}>
+              <div style={{ fontSize: "28px", marginBottom: "10px" }}>📍</div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.muted }}>Find Near Me isn't set up yet on this account.</div>
+            </div>
+          ) : locStatus === "idle" && !restaurants ? (
+            <div style={{ textAlign: "center", padding: "12px 0" }}>
+              <div style={{ fontSize: "28px", marginBottom: "10px" }}>📍</div>
+              <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "14px", color: B.dark, marginBottom: "4px" }}>Find restaurants near you</div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted, marginBottom: "16px" }}>Serving {recipe.cuisine || recipe.region || "this"} food</div>
+              <button onClick={requestLocationAndSearch} className="btn-primary" style={{ padding: "10px 20px", borderRadius: "10px", fontSize: "13px" }}>Use My Location</button>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", color: B.muted, margin: "10px 0" }}>or</div>
+              <div style={{ display: "flex", gap: "8px", maxWidth: "320px", margin: "0 auto" }}>
+                <input value={locText} onChange={e => setLocText(e.target.value)} placeholder="City, neighbourhood, postcode" style={{ flex: 1, padding: "9px 12px", borderRadius: "10px", border: `1px solid ${B.border}`, fontFamily: "'Inter', sans-serif", fontSize: "13px", outline: "none" }} />
+                <button onClick={() => locText.trim() && fetchRestaurants({ locationText: locText.trim() })} style={{ padding: "9px 16px", borderRadius: "10px", border: `1px solid ${B.border}`, background: B.white, cursor: "pointer", fontFamily: "'Inter', sans-serif", fontSize: "13px", fontWeight: 600 }}>Search</button>
+              </div>
+            </div>
+          ) : locStatus === "requesting" ? (
+            <div style={{ textAlign: "center", padding: "20px 0" }}>
+              <div style={{ display: "flex", gap: "6px", justifyContent: "center", marginBottom: "12px" }}>
+                {[0,1,2].map(i => <div key={i} style={{ width: "6px", height: "6px", borderRadius: "50%", background: B.orange, animation: "pulse 1.2s ease infinite", animationDelay: `${i*0.2}s` }} />)}
+              </div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.muted }}>Getting your location...</div>
+            </div>
+          ) : locStatus === "denied" && !restaurants ? (
+            <div style={{ textAlign: "center", padding: "12px 0" }}>
+              <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "14px", color: B.dark, marginBottom: "4px" }}>Where should we look?</div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted, marginBottom: "14px" }}>Enter a city, neighbourhood or postcode</div>
+              <div style={{ display: "flex", gap: "8px", maxWidth: "320px", margin: "0 auto" }}>
+                <input value={locText} onChange={e => setLocText(e.target.value)} onKeyDown={e => e.key === "Enter" && locText.trim() && fetchRestaurants({ locationText: locText.trim() })} placeholder="e.g. Brooklyn" style={{ flex: 1, padding: "9px 12px", borderRadius: "10px", border: `1px solid ${B.border}`, fontFamily: "'Inter', sans-serif", fontSize: "13px", outline: "none" }} />
+                <button onClick={() => locText.trim() && fetchRestaurants({ locationText: locText.trim() })} className="btn-primary" style={{ padding: "9px 16px", borderRadius: "10px", fontSize: "13px" }}>Search</button>
+              </div>
+            </div>
+          ) : restaurantsLoading ? (
+            <div style={{ textAlign: "center", padding: "20px 0" }}>
+              <div style={{ display: "flex", gap: "6px", justifyContent: "center", marginBottom: "12px" }}>
+                {[0,1,2].map(i => <div key={i} style={{ width: "6px", height: "6px", borderRadius: "50%", background: B.orange, animation: "pulse 1.2s ease infinite", animationDelay: `${i*0.2}s` }} />)}
+              </div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.muted }}>Finding restaurants...</div>
+            </div>
+          ) : restaurantsError ? (
+            <div style={{ textAlign: "center", padding: "16px 0", color: "#DC2626", fontFamily: "'Inter', sans-serif", fontSize: "13px" }}>{restaurantsError}</div>
+          ) : restaurants && restaurants.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "16px 0", fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.muted }}>No restaurants found nearby for this dish.</div>
+          ) : restaurants ? (
+            <div>
+              <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "14px", color: B.dark, marginBottom: "12px" }}>{recipe.cuisine || recipe.region || recipe.title} near you</div>
+              {restaurants.map((r, i) => (
+                <div key={i} style={{ background: B.white, borderRadius: "12px", padding: "12px 14px", marginBottom: "8px", border: `1px solid ${B.border}` }}>
+                  <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", fontWeight: 600, color: B.dark, marginBottom: "3px" }}>{r.name}</div>
+                  <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", color: B.muted, marginBottom: "8px" }}>{[r.rating ? `${r.rating} ★` : null, r.distanceKm != null ? `${r.distanceKm} km` : null, r.openNow != null ? (r.openNow ? "Open now" : "Closed") : null].filter(Boolean).join(" · ")}</div>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <a href={r.mapsUrl} target="_blank" rel="noreferrer" style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.orange, fontWeight: 600, textDecoration: "none" }}>View Restaurant</a>
+                    <span style={{ color: B.border }}>·</span>
+                    <a href={r.directionsUrl} target="_blank" rel="noreferrer" style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.orange, fontWeight: 600, textDecoration: "none" }}>Directions</a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 };
 
-/* ─── Home Feed ──────────────────────────────────────────── */
+const MEAL_PLAN_GOALS = [
+  { id: "lose_weight",  label: "Lose Weight",   icon: "⚖️" },
+  { id: "build_muscle", label: "Build Muscle",  icon: "💪" },
+  { id: "family",       label: "Family Meals",  icon: "👨‍👩‍👧" },
+  { id: "budget",       label: "Budget Meals",  icon: "💰" },
+  { id: "quick",        label: "Quick Meals",   icon: "⚡" },
+  { id: "vegetarian",   label: "Vegetarian",    icon: "🌱" },
+  { id: "high_protein", label: "High Protein",  icon: "🍗" },
+];
+
+const MealPlannerView = ({ user, isPro, preferences, onBack, onUpgrade }) => {
+  const [planType, setPlanType] = useState("weekly");
+  const [goals, setGoals] = useState([]);
+  const [plan, setPlan] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [shoppingList, setShoppingList] = useState(null);
+  const [shoppingLoading, setShoppingLoading] = useState(false);
+  const [showShoppingList, setShowShoppingList] = useState(false);
+  const [checked, setChecked] = useState({});
+
+  useEffect(() => {
+    if (!user?.uid || !isPro) return;
+    fetch("/api/ai-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "get-meal-plan", uid: user.uid, planType }) })
+      .then(r => r.json()).then(d => { if (d.days) setPlan(d.days); }).catch(() => {});
+  }, [user?.uid, isPro, planType]);
+
+  const toggleGoal = (id) => setGoals(prev => prev.includes(id) ? prev.filter(g => g !== id) : [...prev, id]);
+
+  const generatePlan = () => {
+    if (!isPro) { onUpgrade(); return; }
+    setLoading(true); setError(null); setShowShoppingList(false); setShoppingList(null);
+    fetch("/api/ai-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "meal-plan", uid: user.uid, isPro, goals: goals.map(id => MEAL_PLAN_GOALS.find(g => g.id === id)?.label).filter(Boolean), planType, preferences }) })
+      .then(r => r.json())
+      .then(d => { if (d.days) setPlan(d.days); else setError(d.error || "Something went wrong"); })
+      .catch(() => setError("Something went wrong"))
+      .finally(() => setLoading(false));
+  };
+
+  const generateShoppingList = () => {
+    if (!plan) return;
+    setShoppingLoading(true);
+    fetch("/api/ai-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "shopping-list-from-plan", days: plan }) })
+      .then(r => r.json())
+      .then(d => { setShoppingList(d.list); setShowShoppingList(true); })
+      .catch(() => setError("Couldn't generate shopping list"))
+      .finally(() => setShoppingLoading(false));
+  };
+
+  return (
+    <div style={{ background: B.white, minHeight: "100vh", paddingBottom: "80px" }}>
+      <div style={{ padding: "12px 16px", position: "sticky", top: 0, background: "rgba(255,255,255,0.95)", backdropFilter: "blur(12px)", zIndex: 80, borderBottom: `1px solid ${B.border}` }}>
+        <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", color: B.orange, fontSize: "14px", fontWeight: 500, fontFamily: "'Inter', sans-serif", padding: 0 }}>‹ Back</button>
+      </div>
+      <div style={{ maxWidth: "700px", margin: "0 auto", padding: "20px 16px" }}>
+        <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "22px", color: B.dark, marginBottom: "4px" }}>Meal Planner</div>
+        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.muted, marginBottom: "20px" }}>Your week, planned in one tap</div>
+        {!isPro && (
+          <div onClick={onUpgrade} style={{ background: B.dark, borderRadius: "16px", padding: "18px", marginBottom: "20px", cursor: "pointer" }}>
+            <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "15px", color: "#fff", marginBottom: "4px" }}>Meal Planner is a Pro feature</div>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.5)" }}>Tap to unlock unlimited AI meal plans</div>
+          </div>
+        )}
+        <div style={{ display: "flex", background: B.bg, borderRadius: "12px", padding: "3px", marginBottom: "20px" }}>
+          {["weekly", "monthly"].map(t => (
+            <button key={t} onClick={() => setPlanType(t)} style={{ flex: 1, padding: "10px", border: "none", borderRadius: "10px", background: planType === t ? B.white : "transparent", fontFamily: "'Inter', sans-serif", fontSize: "13px", fontWeight: planType === t ? 600 : 400, color: planType === t ? B.dark : B.muted, cursor: "pointer", textTransform: "capitalize", boxShadow: planType === t ? "0 1px 4px rgba(0,0,0,0.08)" : "none" }}>{t}</button>
+          ))}
+        </div>
+        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", fontWeight: 700, color: B.muted, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "10px" }}>Goals (optional)</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "20px" }}>
+          {MEAL_PLAN_GOALS.map(g => (
+            <button key={g.id} onClick={() => toggleGoal(g.id)} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 14px", borderRadius: "20px", cursor: "pointer", border: `1px solid ${goals.includes(g.id) ? B.orange : B.border}`, background: goals.includes(g.id) ? "#FFF7ED" : B.white, color: goals.includes(g.id) ? B.orange : B.dark, fontFamily: "'Inter', sans-serif", fontSize: "13px", fontWeight: goals.includes(g.id) ? 600 : 400 }}><span>{g.icon}</span>{g.label}</button>
+          ))}
+        </div>
+        <button onClick={generatePlan} disabled={loading} className="btn-primary" style={{ width: "100%", padding: "14px", borderRadius: "14px", fontSize: "14px", marginBottom: "24px", opacity: loading ? 0.6 : 1 }}>
+          {loading ? "Building your plan..." : plan ? "Regenerate Plan" : `Generate ${planType === "weekly" ? "Weekly" : "Monthly"} Plan`}
+        </button>
+        {error && <div style={{ textAlign: "center", color: "#DC2626", fontFamily: "'Inter', sans-serif", fontSize: "13px", marginBottom: "16px" }}>{error}</div>}
+        {loading && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            {Array(4).fill(0).map((_, i) => <div key={i} className="skeleton" style={{ height: "80px", borderRadius: "14px" }} />)}
+          </div>
+        )}
+        {plan && !loading && (
+          <>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "20px" }}>
+              {plan.map((day, i) => (
+                <div key={i} style={{ background: B.bg, borderRadius: "16px", padding: "16px", animation: "fadeUp 0.3s ease both", animationDelay: `${i * 40}ms` }}>
+                  <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "14px", color: B.dark, marginBottom: "10px" }}>{day.day}</div>
+                  {[["Breakfast", day.breakfast], ["Lunch", day.lunch], ["Dinner", day.dinner]].map(([label, meal]) => meal && (
+                    <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderTop: `1px solid ${B.border}` }}>
+                      <div>
+                        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", color: B.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</div>
+                        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.dark, fontWeight: 500 }}>{meal.title}</div>
+                      </div>
+                      <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", color: B.muted }}>{meal.calories} cal</div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+            <button onClick={generateShoppingList} disabled={shoppingLoading} style={{ width: "100%", padding: "13px", borderRadius: "14px", border: `1px solid ${B.border}`, background: B.white, cursor: "pointer", fontFamily: "'Inter', sans-serif", fontSize: "14px", fontWeight: 600, color: B.dark }}>
+              {shoppingLoading ? "Building shopping list..." : "Generate Shopping List"}
+            </button>
+            {showShoppingList && shoppingList && (
+              <div style={{ background: B.bg, borderRadius: "16px", padding: "18px", marginTop: "16px" }}>
+                <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "15px", color: B.dark, marginBottom: "14px" }}>Shopping List</div>
+                {Object.entries(shoppingList).map(([group, items]) => (Array.isArray(items) && items.length > 0) && (
+                  <div key={group} style={{ marginBottom: "14px" }}>
+                    <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", fontWeight: 700, color: B.muted, textTransform: "capitalize", marginBottom: "6px" }}>{group.replace(/_/g, " ")}</div>
+                    {items.map((item, i) => (
+                      <div key={i} onClick={() => setChecked(p => ({...p, [item]: !p[item]}))} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "7px 0", borderBottom: `1px solid ${B.border}`, cursor: "pointer" }}>
+                        <div style={{ width: "16px", height: "16px", borderRadius: "4px", border: `2px solid ${checked[item] ? B.orange : B.border}`, background: checked[item] ? B.orange : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{checked[item] && <span style={{ color: "#fff", fontSize: "10px" }}>✓</span>}</div>
+                        <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.dark, textDecoration: checked[item] ? "line-through" : "none", opacity: checked[item] ? 0.4 : 1 }}>{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+        {!plan && !loading && (
+          <div style={{ textAlign: "center", padding: "40px 0", color: B.muted }}>
+            <div style={{ fontSize: "40px", marginBottom: "12px", opacity: 0.3 }}>📅</div>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px" }}>Pick your goals and generate your first plan</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const PantryView = ({ isPro, onBack, onUpgrade, onOpenRecipe, bookmarks, onBM }) => {
+  const [ingredients, setIngredients] = useState([]);
+  const [inputVal, setInputVal] = useState("");
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const addIngredient = () => { const val = inputVal.trim(); if (!val || ingredients.includes(val)) return; setIngredients(prev => [...prev, val]); setInputVal(""); };
+  const removeIngredient = (val) => setIngredients(prev => prev.filter(i => i !== val));
+
+  const findRecipes = () => {
+    if (ingredients.length === 0) return;
+    setLoading(true); setError(null);
+    fetch("/api/ai-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "pantry", ingredients, isPro }) })
+      .then(r => r.json())
+      .then(d => { if (d.recipes) setResults(d.recipes); else setError(d.error || "Something went wrong"); })
+      .catch(() => setError("Something went wrong"))
+      .finally(() => setLoading(false));
+  };
+
+  return (
+    <div style={{ background: B.white, minHeight: "100vh", paddingBottom: "80px" }}>
+      <div style={{ padding: "12px 16px", position: "sticky", top: 0, background: "rgba(255,255,255,0.95)", backdropFilter: "blur(12px)", zIndex: 80, borderBottom: `1px solid ${B.border}` }}>
+        <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", color: B.orange, fontSize: "14px", fontWeight: 500, fontFamily: "'Inter', sans-serif", padding: 0 }}>‹ Back</button>
+      </div>
+      <div style={{ maxWidth: "700px", margin: "0 auto", padding: "20px 16px" }}>
+        <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "22px", color: B.dark, marginBottom: "4px" }}>Pantry Mode</div>
+        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.muted, marginBottom: "20px" }}>Tell us what you have, we'll tell you what to cook</div>
+        <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
+          <input value={inputVal} onChange={e => setInputVal(e.target.value)} onKeyDown={e => e.key === "Enter" && addIngredient()} placeholder="e.g. chicken, rice, peppers" style={{ flex: 1, padding: "12px 16px", borderRadius: "12px", border: `1px solid ${B.border}`, fontFamily: "'Inter', sans-serif", fontSize: "14px", outline: "none" }} />
+          <button onClick={addIngredient} className="btn-primary" style={{ padding: "0 20px", borderRadius: "12px", fontSize: "14px" }}>Add</button>
+        </div>
+        {ingredients.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "20px" }}>
+            {ingredients.map(ing => (
+              <div key={ing} style={{ display: "flex", alignItems: "center", gap: "6px", background: "#FFF7ED", border: `1px solid #FED7AA`, borderRadius: "20px", padding: "6px 8px 6px 14px" }}>
+                <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.dark }}>{ing}</span>
+                <button onClick={() => removeIngredient(ing)} style={{ background: "none", border: "none", cursor: "pointer", color: B.muted, fontSize: "15px", lineHeight: 1, padding: "0 4px" }}>×</button>
+              </div>
+            ))}
+          </div>
+        )}
+        <button onClick={findRecipes} disabled={ingredients.length === 0 || loading} className="btn-primary" style={{ width: "100%", padding: "14px", borderRadius: "14px", fontSize: "14px", marginBottom: "20px", opacity: (ingredients.length === 0 || loading) ? 0.5 : 1 }}>
+          {loading ? "Finding recipes..." : "Find Recipes"}
+        </button>
+        {error && <div style={{ textAlign: "center", color: "#DC2626", fontFamily: "'Inter', sans-serif", fontSize: "13px", marginBottom: "16px" }}>{error}</div>}
+        {loading && (
+          <div className="recipe-grid" style={{ padding: 0 }}>{Array(4).fill(0).map((_, i) => <SkeletonCard key={i} />)}</div>
+        )}
+        {!loading && results.length > 0 && (
+          <div className="recipe-grid" style={{ padding: 0 }}>
+            {results.map((r, i) => <RecipeCard key={i} r={r} onOpen={() => onOpenRecipe(r)} bookmarked={bookmarks.some(b => b.title === r.title)} onBM={() => onBM(r)} />)}
+          </div>
+        )}
+        {!isPro && results.length > 0 && (
+          <div onClick={onUpgrade} style={{ background: B.dark, borderRadius: "16px", padding: "18px", marginTop: "16px", cursor: "pointer", textAlign: "center" }}>
+            <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "14px", color: "#fff", marginBottom: "4px" }}>Get more recipes from your pantry</div>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.5)" }}>Pro unlocks more results per search</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const RESTAURANT_QUICK_FILTERS = ["Nearby", "Pizza", "Sushi", "Burgers", "Coffee", "Thai", "Italian", "Vegetarian"];
+
+const RestaurantsView = ({ user }) => {
+  const [query, setQuery] = useState("");
+  const [locStatus, setLocStatus] = useState("idle"); // idle | requesting | granted | denied
+  const [locText, setLocText] = useState("");
+  const [restaurants, setRestaurants] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [configured, setConfigured] = useState(true);
+  const [activeFilter, setActiveFilter] = useState("Nearby");
+
+  // Location-first: request geolocation and show a feed immediately on
+  // open, matching the rest of the app's discovery-first feel — searching
+  // is there to narrow down, not required before anything shows.
+  useEffect(() => {
+    if (!navigator.geolocation) { setLocStatus("denied"); return; }
+    setLocStatus("requesting");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { setLocStatus("granted"); fetchRestaurants({ lat: pos.coords.latitude, lng: pos.coords.longitude, term: "restaurants" }); },
+      () => setLocStatus("denied"),
+      { timeout: 8000 }
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const fetchRestaurants = ({ lat, lng, locationText, term } = {}) => {
+    const searchTerm = term || query.trim() || "restaurants";
+    setLoading(true); setError(null);
+    fetch("/api/ai-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "restaurants", dishOrCuisine: searchTerm, lat, lng, locationText }) })
+      .then(r => r.json())
+      .then(d => { if (!d.configured) { setConfigured(false); setRestaurants([]); return; } if (d.error) setError(d.error); setRestaurants(d.restaurants || []); })
+      .catch(() => setError("Couldn't load restaurants right now"))
+      .finally(() => setLoading(false));
+  };
+
+  const runSearch = (term) => {
+    setActiveFilter(null);
+    if (locStatus === "granted") fetchRestaurants({ term });
+    else if (locText.trim()) fetchRestaurants({ locationText: locText.trim(), term });
+  };
+
+  const applyFilter = (f) => {
+    setActiveFilter(f);
+    const term = f === "Nearby" ? "restaurants" : f;
+    if (locStatus === "granted") fetchRestaurants({ term });
+    else if (locText.trim()) fetchRestaurants({ locationText: locText.trim(), term });
+  };
+
+  return (
+    <div style={{ background: B.white, minHeight: "100vh", paddingBottom: "80px" }}>
+      <div style={{ padding: "16px", maxWidth: "700px", margin: "0 auto" }}>
+        <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "22px", color: B.dark, marginBottom: "4px" }}>Restaurants</div>
+        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.muted, marginBottom: "16px" }}>What's good nearby</div>
+
+        <div style={{ display: "flex", gap: "8px", marginBottom: "14px" }}>
+          <input value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && runSearch(query)} placeholder="Search a cuisine or dish..." style={{ flex: 1, padding: "12px 16px", borderRadius: "12px", border: `1px solid ${B.border}`, fontFamily: "'Inter', sans-serif", fontSize: "14px", outline: "none" }} />
+          <button onClick={() => runSearch(query)} className="btn-primary" style={{ padding: "0 20px", borderRadius: "12px", fontSize: "14px" }}>Search</button>
+        </div>
+
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "18px" }}>
+          {RESTAURANT_QUICK_FILTERS.map(f => (
+            <button key={f} onClick={() => applyFilter(f)} style={{
+              padding: "7px 14px", borderRadius: "20px", cursor: "pointer",
+              border: `1px solid ${activeFilter === f ? B.orange : B.border}`,
+              background: activeFilter === f ? "#FFF7ED" : B.bg,
+              color: activeFilter === f ? B.orange : B.dark,
+              fontFamily: "'Inter', sans-serif", fontSize: "12px", fontWeight: activeFilter === f ? 600 : 400,
+            }}>{f}</button>
+          ))}
+        </div>
+
+        {!configured && (
+          <div style={{ textAlign: "center", padding: "50px 0", color: B.muted }}>
+            <div style={{ fontSize: "40px", marginBottom: "12px", opacity: 0.3 }}>📍</div>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px" }}>Restaurant search isn't set up yet on this account.</div>
+          </div>
+        )}
+
+        {configured && locStatus === "requesting" && (
+          <div style={{ textAlign: "center", padding: "40px 0" }}>
+            <div style={{ display: "flex", gap: "6px", justifyContent: "center" }}>
+              {[0,1,2].map(i => <div key={i} style={{ width: "6px", height: "6px", borderRadius: "50%", background: B.orange, animation: "pulse 1.2s ease infinite", animationDelay: `${i*0.2}s` }} />)}
+            </div>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.muted, marginTop: "10px" }}>Finding what's near you...</div>
+          </div>
+        )}
+
+        {configured && locStatus === "denied" && !restaurants && (
+          <div style={{ textAlign: "center", padding: "30px 0" }}>
+            <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "14px", color: B.dark, marginBottom: "4px" }}>Where should we look?</div>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted, marginBottom: "14px" }}>Location access wasn't available — enter a place instead</div>
+            <div style={{ display: "flex", gap: "8px", maxWidth: "320px", margin: "0 auto" }}>
+              <input value={locText} onChange={e => setLocText(e.target.value)} onKeyDown={e => e.key === "Enter" && locText.trim() && fetchRestaurants({ locationText: locText.trim(), term: "restaurants" })} placeholder="e.g. Brooklyn" style={{ flex: 1, padding: "9px 12px", borderRadius: "10px", border: `1px solid ${B.border}`, fontFamily: "'Inter', sans-serif", fontSize: "13px", outline: "none" }} />
+              <button onClick={() => locText.trim() && fetchRestaurants({ locationText: locText.trim(), term: "restaurants" })} className="btn-primary" style={{ padding: "9px 16px", borderRadius: "10px", fontSize: "13px" }}>Go</button>
+            </div>
+          </div>
+        )}
+
+        {loading && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            {Array(4).fill(0).map((_, i) => <div key={i} className="skeleton" style={{ height: "76px", borderRadius: "14px" }} />)}
+          </div>
+        )}
+
+        {error && <div style={{ textAlign: "center", color: "#DC2626", fontFamily: "'Inter', sans-serif", fontSize: "13px", padding: "16px 0" }}>{error}</div>}
+
+        {restaurants && restaurants.length === 0 && !loading && (
+          <div style={{ textAlign: "center", padding: "40px 0", fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.muted }}>No restaurants found.</div>
+        )}
+
+        {restaurants && restaurants.length > 0 && !loading && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            {restaurants.map((r, i) => (
+              <div key={i} style={{ background: B.bg, borderRadius: "14px", padding: "14px 16px", animation: "fadeUp 0.3s ease both", animationDelay: `${i*40}ms` }}>
+                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "14px", fontWeight: 600, color: B.dark, marginBottom: "4px" }}>{r.name}</div>
+                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted, marginBottom: "10px" }}>{[r.rating ? `${r.rating} ★` : null, r.distanceKm != null ? `${r.distanceKm} km` : null, r.openNow != null ? (r.openNow ? "Open now" : "Closed") : null, r.address].filter(Boolean).join(" · ")}</div>
+                <div style={{ display: "flex", gap: "10px" }}>
+                  <a href={r.mapsUrl} target="_blank" rel="noreferrer" style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.orange, fontWeight: 600, textDecoration: "none" }}>View</a>
+                  <a href={r.directionsUrl} target="_blank" rel="noreferrer" style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.orange, fontWeight: 600, textDecoration: "none" }}>Directions</a>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const AccountView = ({ user, onBack, onDeleteAccount }) => {
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  return (
+    <div style={{ background: B.white, minHeight: "100vh", paddingBottom: "80px" }}>
+      <div style={{ padding: "12px 16px", position: "sticky", top: 0, background: "rgba(255,255,255,0.95)", backdropFilter: "blur(12px)", zIndex: 80, borderBottom: `1px solid ${B.border}` }}>
+        <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", color: B.orange, fontSize: "14px", fontWeight: 500, fontFamily: "'Inter', sans-serif", padding: 0 }}>‹ Back</button>
+      </div>
+      <div style={{ maxWidth: "600px", margin: "0 auto", padding: "20px 16px" }}>
+        <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "22px", color: B.dark, marginBottom: "20px" }}>Manage Account</div>
+        <div style={{ borderRadius: "16px", overflow: "hidden", border: `1px solid ${B.border}`, marginBottom: "20px" }}>
+          <div style={{ padding: "16px", borderBottom: `1px solid ${B.border}` }}>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", color: B.muted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "4px" }}>Name</div>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "14px", color: B.dark }}>{user?.displayName || "—"}</div>
+          </div>
+          <div style={{ padding: "16px" }}>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", color: B.muted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "4px" }}>Email</div>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "14px", color: B.dark }}>{user?.email || "—"}</div>
+          </div>
+        </div>
+        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted, lineHeight: 1.6, marginBottom: "24px" }}>Signed in with Google. To change your name, email, or password, manage it directly through your Google Account.</div>
+        {!confirmDelete ? (
+          <button onClick={() => setConfirmDelete(true)} style={{ width: "100%", padding: "14px", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "12px", cursor: "pointer", fontFamily: "'Inter', sans-serif", fontSize: "14px", fontWeight: 600, color: "#DC2626" }}>Delete Account</button>
+        ) : (
+          <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "16px", padding: "18px" }}>
+            <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "14px", color: "#DC2626", marginBottom: "6px" }}>Are you sure?</div>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: "#7F1D1D", marginBottom: "16px", lineHeight: 1.6 }}>This permanently deletes your saved recipes, search history, taste profile, and cancels any active subscription. This cannot be undone.</div>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button onClick={() => setConfirmDelete(false)} style={{ flex: 1, padding: "11px", background: B.white, border: `1px solid ${B.border}`, borderRadius: "10px", cursor: "pointer", fontFamily: "'Inter', sans-serif", fontSize: "13px", fontWeight: 600, color: B.dark }}>Cancel</button>
+              <button onClick={() => { setDeleting(true); onDeleteAccount().finally(() => setDeleting(false)); }} disabled={deleting} style={{ flex: 1, padding: "11px", background: "#DC2626", border: "none", borderRadius: "10px", cursor: "pointer", fontFamily: "'Inter', sans-serif", fontSize: "13px", fontWeight: 600, color: "#fff", opacity: deleting ? 0.6 : 1 }}>{deleting ? "Deleting..." : "Yes, Delete"}</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const AskAIHistoryView = ({ user, onBack }) => {
+  const [conversations, setConversations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    if (!user?.uid) { setLoading(false); return; }
+    fetch("/api/ai-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "list-conversations", uid: user.uid }) })
+      .then(r => r.json()).then(d => setConversations(d.conversations || [])).catch(() => {}).finally(() => setLoading(false));
+  }, [user?.uid]);
+  return (
+    <div style={{ background: B.white, minHeight: "100vh", paddingBottom: "80px" }}>
+      <div style={{ padding: "12px 16px", position: "sticky", top: 0, background: "rgba(255,255,255,0.95)", backdropFilter: "blur(12px)", zIndex: 80, borderBottom: `1px solid ${B.border}` }}>
+        <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", color: B.orange, fontSize: "14px", fontWeight: 500, fontFamily: "'Inter', sans-serif", padding: 0 }}>‹ Back</button>
+      </div>
+      <div style={{ maxWidth: "700px", margin: "0 auto", padding: "20px 16px" }}>
+        <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "22px", color: B.dark, marginBottom: "4px" }}>Ask AI</div>
+        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.muted, marginBottom: "20px" }}>Your recent conversations</div>
+        {loading && <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>{Array(3).fill(0).map((_, i) => <div key={i} className="skeleton" style={{ height: "60px", borderRadius: "12px" }} />)}</div>}
+        {!loading && conversations.length === 0 && (
+          <div style={{ textAlign: "center", padding: "60px 0", color: B.muted }}>
+            <div style={{ fontSize: "40px", marginBottom: "12px", opacity: 0.3 }}>✨</div>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px" }}>Ask a question from any recipe page to start a conversation</div>
+          </div>
+        )}
+        {!loading && conversations.map((c, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "14px 12px", borderBottom: `1px solid ${B.border}` }}>
+            <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: "#FFF7ED", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: "15px" }}>✨</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", fontWeight: 600, color: B.dark }}>{c.recipeTitle}</div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.lastMessage}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const PrivacyView = ({ onBack }) => (
+  <div style={{ background: B.white, minHeight: "100vh", paddingBottom: "80px" }}>
+    <div style={{ padding: "12px 16px", position: "sticky", top: 0, background: "rgba(255,255,255,0.95)", backdropFilter: "blur(12px)", zIndex: 80, borderBottom: `1px solid ${B.border}` }}>
+      <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", color: B.orange, fontSize: "14px", fontWeight: 500, fontFamily: "'Inter', sans-serif", padding: 0 }}>‹ Back</button>
+    </div>
+    <div style={{ maxWidth: "640px", margin: "0 auto", padding: "24px 20px", fontFamily: "'Inter', sans-serif" }}>
+      <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "24px", color: B.dark, marginBottom: "6px" }}>Privacy Policy</div>
+      <div style={{ fontSize: "12px", color: B.muted, marginBottom: "28px" }}>Last updated: {new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</div>
+      {[
+        ["What we collect", "When you sign in with Google, we store your name, email, and profile photo. As you use Mama K, we record your searches, saved recipes, and which recipes you view, to personalise your feed and recommendations."],
+        ["How we use it", "Your search and viewing history builds a taste profile used to personalise your home feed and recommendations. We never sell this data to third parties."],
+        ["AI processing", "When you search, ask a question, or request a meal plan, your query is sent to our AI provider to generate a response. We do not send your name or email to the AI provider."],
+        ["Location data", "Find Near Me and Restaurants only request your location when you explicitly search, used solely to find nearby restaurants, never stored linked to your account."],
+        ["Payments", "Subscription payments are processed by Flutterwave. We do not store your card details."],
+        ["Your rights", "You can delete your account at any time from Manage Account. This permanently removes your saved recipes, search history, taste profile, and conversation history."],
+        ["Data retention", "We retain account data while your account is active. Deleted account data is removed within 30 days."],
+        ["Contact", "Questions can be sent to support@keyangle.tech."],
+      ].map(([title, body]) => (
+        <div key={title} style={{ marginBottom: "22px" }}>
+          <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "15px", color: B.dark, marginBottom: "6px" }}>{title}</div>
+          <div style={{ fontSize: "13px", color: "#3A3530", lineHeight: 1.7 }}>{body}</div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const TermsView = ({ onBack }) => (
+  <div style={{ background: B.white, minHeight: "100vh", paddingBottom: "80px" }}>
+    <div style={{ padding: "12px 16px", position: "sticky", top: 0, background: "rgba(255,255,255,0.95)", backdropFilter: "blur(12px)", zIndex: 80, borderBottom: `1px solid ${B.border}` }}>
+      <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", color: B.orange, fontSize: "14px", fontWeight: 500, fontFamily: "'Inter', sans-serif", padding: 0 }}>‹ Back</button>
+    </div>
+    <div style={{ maxWidth: "640px", margin: "0 auto", padding: "24px 20px", fontFamily: "'Inter', sans-serif" }}>
+      <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "24px", color: B.dark, marginBottom: "6px" }}>Terms of Service</div>
+      <div style={{ fontSize: "12px", color: B.muted, marginBottom: "28px" }}>Last updated: {new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</div>
+      {[
+        ["Using Mama K", "Mama K Recipes is a food discovery platform. Recipes, meal plans, and nutritional estimates are AI-generated for general guidance. Always use your own judgement, especially regarding allergies and food safety."],
+        ["Accounts", "You must sign in with a valid Google account. One account per person."],
+        ["Subscriptions", "Mama K Pro is billed monthly or annually via Flutterwave, renewing automatically. Cancelling stops future billing but you retain Pro access until the current period ends."],
+        ["Free tier limits", "Free accounts include 1 AI-generated recipe search per day. Browsing and cached content are not limited."],
+        ["Content accuracy", "Nutritional estimates are AI-generated approximations, not verified nutritional analysis."],
+        ["Restaurants", "Restaurant suggestions come from a third-party places provider for convenience only. Always confirm details with the restaurant directly."],
+        ["Acceptable use", "Don't use Mama K to generate harmful or illegal content, or abuse the free-tier limit through automation."],
+        ["Changes", "We may update these terms as the product evolves."],
+        ["Contact", "Questions can be sent to support@keyangle.tech."],
+      ].map(([title, body]) => (
+        <div key={title} style={{ marginBottom: "22px" }}>
+          <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "15px", color: B.dark, marginBottom: "6px" }}>{title}</div>
+          <div style={{ fontSize: "13px", color: "#3A3530", lineHeight: 1.7 }}>{body}</div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
 const HomeFeed = ({ user, isPro, preferences, recentSearches, bookmarks, onBM, onOpen, onUpgrade, activeFilter }) => {
   const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useState(false);
   const [batch, setBatch] = useState(0);
   const [done, setDone] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [pullY, setPullY] = useState(0);
+  const touchStartY = useRef(0);
   const loaderRef = useRef(null);
   const loadingRef = useRef(false);
   const dwellTimers = useRef({});
@@ -737,6 +1382,23 @@ const HomeFeed = ({ user, isPro, preferences, recentSearches, bookmarks, onBM, o
   };
   const clearDwell = t => { clearTimeout(dwellTimers.current[t]); delete dwellTimers.current[t]; };
 
+  const refresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    setBatches([]); setBatch(0); setDone(false); setShowUpgrade(false);
+    loadingRef.current = false;
+    await loadNext();
+    setRefreshing(false);
+    setPullY(0);
+  };
+  const handleTouchStart = (e) => { if (window.scrollY === 0) touchStartY.current = e.touches[0].clientY; };
+  const handleTouchMove = (e) => {
+    if (window.scrollY > 0 || touchStartY.current === 0) return;
+    const delta = e.touches[0].clientY - touchStartY.current;
+    if (delta > 0) setPullY(Math.min(delta * 0.5, 80));
+  };
+  const handleTouchEnd = () => { if (pullY > 50) refresh(); else setPullY(0); touchStartY.current = 0; };
+
   const allRecipes = batches.flatMap(b => b.recipes);
 
   if (allRecipes.length === 0 && loading) {
@@ -748,7 +1410,12 @@ const HomeFeed = ({ user, isPro, preferences, recentSearches, bookmarks, onBM, o
   }
 
   return (
-    <div style={{ paddingBottom: "80px" }}>
+    <div onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} style={{ paddingBottom: "80px", transform: `translateY(${pullY}px)`, transition: pullY === 0 ? "transform 0.2s ease" : "none" }}>
+      {(pullY > 0 || refreshing) && (
+        <div style={{ display: "flex", justifyContent: "center", padding: "10px 0", opacity: Math.min(pullY / 50, 1) }}>
+          <div style={{ width: "20px", height: "20px", border: `2px solid ${B.border}`, borderTopColor: B.orange, borderRadius: "50%", animation: refreshing ? "spin 0.7s linear infinite" : "none" }} />
+        </div>
+      )}
       <div className="recipe-grid">
         {allRecipes.map((r, i) => (
           <div key={`${r.title}-${i}`} style={{ animation: "fadeUp 0.4s ease both", animationDelay: `${(i % 6) * 40}ms` }}
@@ -756,7 +1423,7 @@ const HomeFeed = ({ user, isPro, preferences, recentSearches, bookmarks, onBM, o
           >
             <RecipeCard
               r={r}
-              tall={i % 5 === 0}
+              tall={i > 0 && i % 5 === 0}
               onOpen={() => { clearDwell(r.title); if (user?.uid) trackEngagement(user.uid, { type: "open", recipe: r }); onOpen(r); }}
               bookmarked={bookmarks.some(b => b.title === r.title)}
               onBM={() => onBM(r)}
@@ -780,15 +1447,16 @@ const HomeFeed = ({ user, isPro, preferences, recentSearches, bookmarks, onBM, o
         <div onClick={onUpgrade} style={{
           background: B.dark, borderRadius: "20px", padding: "24px 20px",
           cursor: "pointer", marginTop: "8px", transition: "opacity 0.2s",
+          textAlign: "center",
         }}
           onMouseEnter={e => e.currentTarget.style.opacity = "0.92"}
           onMouseLeave={e => e.currentTarget.style.opacity = "1"}
         >
           <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "18px", color: "#fff", marginBottom: "8px", lineHeight: 1.2 }}>
-            Your feed goes deeper with Pro
+            Unlimited Discovery
           </div>
           <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.5)", marginBottom: "16px" }}>
-            Unlock unlimited personalised food discovery
+            Keep exploring without limits
           </div>
           <div style={{ display: "inline-block", background: B.orange, color: "#fff", borderRadius: "10px", padding: "10px 20px", fontFamily: "'Inter', sans-serif", fontSize: "13px", fontWeight: 600 }}>
             Upgrade to Pro — $4.99/month
@@ -806,6 +1474,7 @@ const SearchView = ({ user, isPro, bookmarks, onBM, onOpen, onShowPaywall, searc
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [searchError, setSearchError] = useState(false);
+  const [aiMode, setAiMode] = useState(false);
   const inputRef = useRef();
 
   useEffect(() => { setTimeout(() => inputRef.current?.focus(), 100); }, []);
@@ -814,42 +1483,23 @@ const SearchView = ({ user, isPro, bookmarks, onBM, onOpen, onShowPaywall, searc
     const raw = (overrideQuery || query || "").trim();
     if (!raw) return;
     if (!user) { onShowPaywall(); return; }
-    // Soft client-side gate — fast UX only. Server is the real source of truth.
+    if (aiMode && !isPro) { onShowPaywall(); return; }
     if (!isPro && searchCount >= FREE_LIMIT) { onShowPaywall(); return; }
 
     const normalized = raw.toLowerCase().replace(/[^\w\s]/g, "").replace(/\s+/g, " ").trim();
-
-    setLoading(true);
-    setSearched(true);
-    setSearchError(false);
+    setLoading(true); setSearched(true); setSearchError(false);
 
     let recipes = [];
     try {
-      // First attempt
-      let outcome = await callAPIDetailed(normalized, isPro, user?.uid);
-
-      if (outcome.limitReached) {
-        setLoading(false);
-        if (outcome.searchCount != null) onSyncCount(outcome.searchCount);
-        onShowPaywall();
-        return;
-      }
-
-      // A genuine transient failure (AI parse hiccup etc) never costs the free search —
-      // safe to retry automatically once with the same query.
-      if (outcome.recipes.length === 0) {
-        outcome = await callAPIDetailed(normalized, isPro, user?.uid);
-      }
-
+      let outcome = await callAPIDetailed(normalized, isPro, user?.uid, aiMode);
+      if (outcome.limitReached) { setLoading(false); if (outcome.searchCount != null) onSyncCount(outcome.searchCount); onShowPaywall(); return; }
+      if (outcome.proRequired) { setLoading(false); onShowPaywall(); return; }
+      if (outcome.recipes.length === 0) outcome = await callAPIDetailed(normalized, isPro, user?.uid, aiMode);
       recipes = outcome.recipes;
       if (outcome.searchCount != null) onSyncCount(outcome.searchCount);
       if (recipes.length === 0) setSearchError(!!outcome.error);
-
       setResults(recipes);
-    } catch {
-      setResults([]);
-      setSearchError(true);
-    }
+    } catch { setResults([]); setSearchError(true); }
     setLoading(false);
 
     if (user?.uid && recipes.length > 0) {
@@ -860,20 +1510,35 @@ const SearchView = ({ user, isPro, bookmarks, onBM, onOpen, onShowPaywall, searc
 
   return (
     <div style={{ background: B.white, minHeight: "100vh", paddingBottom: "80px" }}>
-      {/* Search bar */}
       <div style={{ padding: "12px 16px", position: "sticky", top: 0, background: B.white, zIndex: 80, borderBottom: `1px solid ${B.border}` }}>
-        <div style={{ display: "flex", alignItems: "center", background: B.bg, borderRadius: "12px", border: `1px solid ${B.border}` }}>
-          <svg style={{ margin: "0 10px 0 14px", color: B.muted, flexShrink: 0 }} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input ref={inputRef} value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && doSearch()}
-            placeholder="Jollof Rice, Pasta, Healthy Breakfast..."
-            style={{ flex: 1, border: "none", outline: "none", padding: "13px 0", fontFamily: "'Inter', sans-serif", fontSize: "15px", background: "transparent", color: B.dark }}
-          />
-          {query && <button onClick={() => { setQuery(""); setResults([]); setSearched(false); }} style={{ background: "none", border: "none", padding: "0 14px", cursor: "pointer", color: B.muted, fontSize: "18px" }}>×</button>}
-          <button onClick={doSearch} className="btn-primary" style={{ margin: "5px", borderRadius: "9px", padding: "9px 16px", fontSize: "13px" }}>Search</button>
+        <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
+          <div style={{ display: "flex", alignItems: "center", background: B.bg, borderRadius: "12px", border: `1px solid ${B.border}` }}>
+            <svg style={{ margin: "0 10px 0 14px", color: B.muted, flexShrink: 0 }} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input ref={inputRef} value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && doSearch()}
+              placeholder={aiMode ? "Something creamy tonight, under 20 minutes..." : "Jollof Rice, Pasta, Healthy Breakfast..."}
+              style={{ flex: 1, border: "none", outline: "none", padding: "13px 0", fontFamily: "'Inter', sans-serif", fontSize: "15px", background: "transparent", color: B.dark }}
+            />
+            {query && <button onClick={() => { setQuery(""); setResults([]); setSearched(false); }} style={{ background: "none", border: "none", padding: "0 14px", cursor: "pointer", color: B.muted, fontSize: "18px" }}>×</button>}
+            <button onClick={doSearch} className="btn-primary" style={{ margin: "5px", borderRadius: "9px", padding: "9px 16px", fontSize: "13px" }}>Search</button>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 2px 0" }}>
+            {[["recipe", "Recipe Search", false], ["ai", "Ask AI", true]].map(([id, label, needsPro]) => (
+              <button key={id} onClick={() => needsPro && !isPro ? onShowPaywall() : setAiMode(needsPro)} style={{
+                display: "flex", alignItems: "center", gap: "5px", padding: "6px 12px", borderRadius: "16px", cursor: "pointer",
+                border: `1px solid ${aiMode === needsPro ? B.orange : B.border}`,
+                background: aiMode === needsPro ? "#FFF7ED" : "transparent",
+                color: aiMode === needsPro ? B.orange : B.muted,
+                fontFamily: "'Inter', sans-serif", fontSize: "12px", fontWeight: aiMode === needsPro ? 600 : 400,
+              }}>
+                {label}
+                {needsPro && !isPro && <span style={{ fontSize: "9px", background: B.orange, color: "#fff", borderRadius: "4px", padding: "1px 5px", fontWeight: 700 }}>PRO</span>}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div style={{ padding: "16px" }}>
+      <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "16px" }}>
         {!searched && (
           <>
             {searchHistory.length > 0 && (
@@ -905,7 +1570,7 @@ const SearchView = ({ user, isPro, bookmarks, onBM, onOpen, onShowPaywall, searc
         )}
 
         {loading && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+          <div className="recipe-grid" style={{ padding: 0 }}>
             {Array(4).fill(0).map((_, i) => <SkeletonCard key={i} />)}
           </div>
         )}
@@ -919,17 +1584,9 @@ const SearchView = ({ user, isPro, bookmarks, onBM, onOpen, onShowPaywall, searc
             {results.length === 0 ? (
               <div style={{ textAlign: "center", padding: "60px 0", color: B.muted }}>
                 <div style={{ fontSize: "40px", marginBottom: "12px" }}>{searchError ? "⚠️" : "🔍"}</div>
-                <div style={{ fontFamily: "'Poppins', sans-serif", fontSize: "16px", marginBottom: "6px" }}>
-                  {searchError ? "Something went wrong" : "No recipes found"}
-                </div>
-                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.muted, marginBottom: "16px" }}>
-                  {searchError ? "That didn't cost your free search — try again." : "Try a different dish or spelling."}
-                </div>
-                {searchError && (
-                  <button onClick={() => doSearch(query)} className="btn-primary" style={{ padding: "10px 24px", borderRadius: "10px", fontSize: "13px" }}>
-                    Try Again
-                  </button>
-                )}
+                <div style={{ fontFamily: "'Poppins', sans-serif", fontSize: "16px", marginBottom: "6px" }}>{searchError ? "Something went wrong" : "No recipes found"}</div>
+                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.muted, marginBottom: "16px" }}>{searchError ? "That didn't cost your free search — try again." : "Try a different dish or spelling."}</div>
+                {searchError && <button onClick={() => doSearch(query)} className="btn-primary" style={{ padding: "10px 24px", borderRadius: "10px", fontSize: "13px" }}>Try Again</button>}
               </div>
             ) : (
               <div className="recipe-grid" style={{ padding: 0 }}>
@@ -945,45 +1602,28 @@ const SearchView = ({ user, isPro, bookmarks, onBM, onOpen, onShowPaywall, searc
   );
 };
 
-/* ─── Saved View ─────────────────────────────────────────── */
-const SavedView = ({ bookmarks, onOpen, onBM }) => (
-  <div style={{ padding: "20px 16px 80px", background: B.white, minHeight: "100vh" }}>
-    <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "22px", color: B.dark, marginBottom: "4px" }}>Saved</div>
-    <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.muted, marginBottom: "20px" }}>{bookmarks.length} recipes</div>
-    {bookmarks.length === 0 ? (
-      <div style={{ textAlign: "center", padding: "80px 0" }}>
-        <div style={{ fontSize: "48px", opacity: 0.2, marginBottom: "16px" }}>🔖</div>
-        <div style={{ fontFamily: "'Poppins', sans-serif", fontSize: "18px", color: B.muted }}>Nothing saved yet</div>
-      </div>
-    ) : (
-      <div className="recipe-grid" style={{ padding: 0 }}>
-        {bookmarks.map((r, i) => <RecipeCard key={i} r={r} onOpen={() => onOpen(r)} bookmarked={true} onBM={() => onBM(r)} />)}
-      </div>
-    )}
-  </div>
-);
-
-/* ─── Profile View ───────────────────────────────────────── */
-const ProfileView = ({ user, isPro, subscription, onSignIn, onSignOut, onUpgrade, searchCount, searchHistory, bookmarks, loadingPayment, preferences, onOpen, onGoToSaved, onCancelSubscription }) => {
+const ProfileView = ({ user, isPro, subscription, onSignIn, onSignOut, onUpgrade, searchCount, searchHistory, bookmarks, loadingPayment, preferences, onOpen, onGoToSaved, onCancelSubscription, onNavigate }) => {
   const sub = subscription || { status: "free", isPro: false, endDate: null };
+  const [billingCycle, setBillingCycle] = useState("monthly");
 
   const topCuisines = Object.entries(preferences?.regions || {})
-    .sort((a,b) => b[1]-a[1]).slice(0,3)
+    .sort((a,b) => b[1]-a[1]).slice(0,4)
     .map(([k]) => k.replace(/_/g," ").replace(/\b\w/g, l => l.toUpperCase()));
-
   const topDiet = Object.entries(preferences?.dietary || {})
     .sort((a,b) => b[1]-a[1]).slice(0,2)
     .map(([k]) => k.charAt(0).toUpperCase() + k.slice(1));
-
-  const streak = Math.min(searchHistory?.length || 0, 7);
   const tastePrimary = topCuisines[0] || "Building...";
+  const recipesExplored = (searchHistory?.length || 0) + (bookmarks?.length || 0);
+  const explorerLevel = recipesExplored === 0 ? 1 : Math.min(20, Math.floor(recipesExplored / 3) + 1);
+  const cookingPersonality =
+    topDiet.some(d => /healthy|low/i.test(d)) ? "Health Conscious Cook" :
+    topCuisines.length >= 3 ? "Global Food Explorer" :
+    topCuisines[0] ? `${topCuisines[0]} Enthusiast` : "New Explorer";
 
   const fmtDate = (d) => {
     if (!d) return "";
-    try {
-      const date = d instanceof Date ? d : new Date(d);
-      return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-    } catch { return ""; }
+    try { const date = d instanceof Date ? d : new Date(d); return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); }
+    catch { return ""; }
   };
 
   if (!user) {
@@ -1007,21 +1647,17 @@ const ProfileView = ({ user, isPro, subscription, onSignIn, onSignOut, onUpgrade
       <div style={{ padding: "20px 16px 0", maxWidth: "1100px", margin: "0 auto" }}>
         <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "22px", color: B.dark, marginBottom: "16px" }}>My Kitchen</div>
 
-        {/* User card */}
         <div style={{ display: "flex", alignItems: "center", gap: "14px", padding: "14px 16px", background: B.bg, borderRadius: "16px", marginBottom: "16px" }}>
           {user.photoURL && <img src={user.photoURL} alt="" style={{ width: "48px", height: "48px", borderRadius: "50%", objectFit: "cover", border: `2px solid ${isPro ? B.orange : B.border}`, flexShrink: 0 }} />}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "15px", color: B.dark }}>{user.displayName || "User"}</div>
-            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted }}>{user.email}</div>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted }}>{cookingPersonality}</div>
           </div>
-          <span style={{ background: isPro ? "#F0FDF4" : B.bg, color: isPro ? "#16A34A" : B.muted, border: `1px solid ${isPro ? "#BBF7D0" : B.border}`, borderRadius: "20px", padding: "3px 12px", fontSize: "11px", fontWeight: 700, flexShrink: 0 }}>
-            {isPro ? "✓ Pro" : "Free"}
-          </span>
+          <span style={{ background: isPro ? "#F0FDF4" : B.bg, color: isPro ? "#16A34A" : B.muted, border: `1px solid ${isPro ? "#BBF7D0" : B.border}`, borderRadius: "20px", padding: "3px 12px", fontSize: "11px", fontWeight: 700, flexShrink: 0 }}>{isPro ? "✓ Pro" : "Free"}</span>
         </div>
 
-        {/* Stats */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "16px" }}>
-          {[["❤️", bookmarks?.length || 0, "Saved"], ["🧠", tastePrimary, "Top Taste"], ["🔥", `${streak}d`, "Streak"]].map(([icon, val, label]) => (
+          {[["❤️", bookmarks?.length || 0, "Saved"], ["🧠", tastePrimary, "Top Taste"], ["🧭", recipesExplored, "Recipes Explored"]].map(([icon, val, label]) => (
             <div key={label} style={{ background: B.bg, borderRadius: "14px", padding: "14px 8px", textAlign: "center" }}>
               <div style={{ fontSize: "18px", marginBottom: "4px" }}>{icon}</div>
               <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: String(val).length > 7 ? "10px" : "13px", color: B.dark, lineHeight: 1.2 }}>{val}</div>
@@ -1030,30 +1666,48 @@ const ProfileView = ({ user, isPro, subscription, onSignIn, onSignOut, onUpgrade
           ))}
         </div>
 
-        {/* Taste profile */}
         {(topCuisines.length > 0 || topDiet.length > 0) && (
           <div style={{ background: B.dark, borderRadius: "16px", padding: "18px", marginBottom: "16px" }}>
-            <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "14px", color: "#fff", marginBottom: "12px" }}>Your Taste Profile</div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+              <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "14px", color: "#fff" }}>Taste DNA</div>
+              <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", color: B.orange, background: `${B.orange}22`, borderRadius: "20px", padding: "3px 10px", fontWeight: 700 }}>Explorer Lv.{explorerLevel}</span>
+            </div>
             {topCuisines.length > 0 && (
               <div style={{ marginBottom: "10px" }}>
                 <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "6px" }}>Favourite Cuisines</div>
-                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                  {topCuisines.map(c => <span key={c} style={{ background: "rgba(255,255,255,0.1)", color: "#fff", borderRadius: "20px", padding: "4px 12px", fontSize: "12px" }}>{c}</span>)}
-                </div>
+                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>{topCuisines.map(c => <span key={c} style={{ background: "rgba(255,255,255,0.1)", color: "#fff", borderRadius: "20px", padding: "4px 12px", fontSize: "12px" }}>{c}</span>)}</div>
               </div>
             )}
             {topDiet.length > 0 && (
               <div>
                 <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "6px" }}>Dietary Preferences</div>
-                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                  {topDiet.map(d => <span key={d} style={{ background: `${B.orange}33`, color: B.orange, borderRadius: "20px", padding: "4px 12px", fontSize: "12px" }}>{d}</span>)}
-                </div>
+                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>{topDiet.map(d => <span key={d} style={{ background: `${B.orange}33`, color: B.orange, borderRadius: "20px", padding: "4px 12px", fontSize: "12px" }}>{d}</span>)}</div>
               </div>
             )}
           </div>
         )}
 
-        {/* Recently saved */}
+        <div style={{ marginBottom: "16px" }}>
+          <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "15px", color: B.dark, marginBottom: "10px" }}>Your Personal Chef</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+            {[
+              { id: "meal-planner", icon: "📅", label: "Meal Planner", desc: "Plan your week" },
+              { id: "pantry", icon: "🥘", label: "Pantry Mode", desc: "Cook what you have" },
+              { id: "ask-ai-history", icon: "✨", label: "Ask AI", desc: "Past conversations" },
+              { id: "saved", icon: "🔖", label: "Saved Recipes", desc: `${bookmarks?.length || 0} recipes`, action: onGoToSaved },
+            ].map(item => (
+              <div key={item.id} onClick={item.action || (() => onNavigate(item.id))} style={{ background: B.bg, borderRadius: "14px", padding: "14px", cursor: "pointer", transition: "background 0.15s" }}
+                onMouseEnter={e => e.currentTarget.style.background = "#F0EDE8"}
+                onMouseLeave={e => e.currentTarget.style.background = B.bg}
+              >
+                <div style={{ fontSize: "20px", marginBottom: "8px" }}>{item.icon}</div>
+                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", fontWeight: 600, color: B.dark }}>{item.label}</div>
+                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", color: B.muted, marginTop: "2px" }}>{item.desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {bookmarks?.length > 0 && (
           <div style={{ marginBottom: "16px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
@@ -1064,10 +1718,7 @@ const ProfileView = ({ user, isPro, subscription, onSignIn, onSignOut, onUpgrade
               {bookmarks.slice(0, 6).map((r, i) => (
                 <div key={i} onClick={() => onOpen(r)} style={{ flexShrink: 0, width: "100px", cursor: "pointer" }}>
                   <div style={{ height: "72px", borderRadius: "10px", overflow: "hidden", background: "#F0EDE8", marginBottom: "5px" }}>
-                    {r.image
-                      ? <img src={r.imageSmall || r.image} alt={r.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      : <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "22px" }}>{r.emoji}</div>
-                    }
+                    {r.image ? <img src={r.imageSmall || r.image} alt={r.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "22px" }}>{r.emoji}</div>}
                   </div>
                   <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", color: B.dark, lineHeight: 1.3 }}>{r.title}</div>
                 </div>
@@ -1076,26 +1727,26 @@ const ProfileView = ({ user, isPro, subscription, onSignIn, onSignOut, onUpgrade
           </div>
         )}
 
-        {/* Upgrade card */}
         {!isPro && (
-          <div onClick={onUpgrade} style={{ background: B.dark, borderRadius: "16px", padding: "20px", cursor: "pointer", marginBottom: "16px" }}
-            onMouseEnter={e => e.currentTarget.style.opacity = "0.9"}
-            onMouseLeave={e => e.currentTarget.style.opacity = "1"}
-          >
-            <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "16px", color: "#fff", marginBottom: "10px" }}>Unlock Pro</div>
-            {["Unlimited AI recipe searches", "6 recipes per search", "Party Mode & Recipe Tools", "Shopping list generator", "Personalised meal planning"].map(f => (
+          <div style={{ background: B.dark, borderRadius: "16px", padding: "20px", marginBottom: "16px" }}>
+            <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "17px", color: "#fff", marginBottom: "10px" }}>Unlock Your Personal AI Chef</div>
+            {["Unlimited AI food discovery", "AI Meal Planner", "Transform any recipe", "Pantry to meal suggestions", "Unlimited recipe adaptations", "Smarter, personalised recommendations"].map(f => (
               <div key={f} style={{ display: "flex", gap: "8px", marginBottom: "7px", alignItems: "center" }}>
                 <span style={{ color: B.orange, fontSize: "12px", fontWeight: 700, flexShrink: 0 }}>✓</span>
                 <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.75)" }}>{f}</span>
               </div>
             ))}
-            <div style={{ marginTop: "14px", display: "inline-block", background: B.orange, color: "#fff", borderRadius: "10px", padding: "10px 20px", fontSize: "14px", fontWeight: 700 }}>
-              {loadingPayment ? "Redirecting..." : "$4.99 / month"}
+            <div style={{ display: "flex", background: "rgba(255,255,255,0.08)", borderRadius: "10px", padding: "3px", marginTop: "14px", marginBottom: "12px" }}>
+              {[["monthly", "Monthly"], ["annual", "Annual — save 33%"]].map(([id, label]) => (
+                <button key={id} onClick={() => setBillingCycle(id)} style={{ flex: 1, padding: "8px", border: "none", borderRadius: "8px", background: billingCycle === id ? B.orange : "transparent", color: "#fff", fontFamily: "'Inter', sans-serif", fontSize: "12px", fontWeight: billingCycle === id ? 700 : 400, cursor: "pointer" }}>{label}</button>
+              ))}
+            </div>
+            <div onClick={() => onUpgrade(billingCycle)} style={{ display: "inline-block", background: B.orange, color: "#fff", borderRadius: "10px", padding: "10px 20px", fontSize: "14px", fontWeight: 700, cursor: "pointer" }}>
+              {loadingPayment ? "Redirecting..." : billingCycle === "annual" ? "$39.99 / year" : "$4.99 / month"}
             </div>
           </div>
         )}
 
-        {/* Subscription section */}
         <div style={{ borderRadius: "16px", overflow: "hidden", border: `1px solid ${B.border}`, marginBottom: "16px" }}>
           <div style={{ padding: "14px 16px", borderBottom: isPro && sub.status === "active" ? `1px solid ${B.border}` : "none", background: B.white }}>
             <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "12px", color: B.muted, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "8px" }}>Subscription</div>
@@ -1108,9 +1759,7 @@ const ProfileView = ({ user, isPro, subscription, onSignIn, onSignOut, onUpgrade
                   </div>
                 )}
               </div>
-              <span style={{ background: isPro ? "#F0FDF4" : B.bg, color: isPro ? "#16A34A" : B.muted, border: `1px solid ${isPro ? "#BBF7D0" : B.border}`, borderRadius: "20px", padding: "3px 12px", fontSize: "11px", fontWeight: 700 }}>
-                {sub.status === "cancelled" ? "Cancelling" : isPro ? "Active" : "Free"}
-              </span>
+              <span style={{ background: isPro ? "#F0FDF4" : B.bg, color: isPro ? "#16A34A" : B.muted, border: `1px solid ${isPro ? "#BBF7D0" : B.border}`, borderRadius: "20px", padding: "3px 12px", fontSize: "11px", fontWeight: 700 }}>{sub.status === "cancelled" ? "Cancelling" : isPro ? "Active" : "Free"}</span>
             </div>
           </div>
           {isPro && sub.status === "active" && (
@@ -1123,7 +1772,7 @@ const ProfileView = ({ user, isPro, subscription, onSignIn, onSignOut, onUpgrade
             </div>
           )}
           {!isPro && (
-            <div onClick={onUpgrade} style={{ padding: "13px 16px", background: B.white, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}
+            <div onClick={() => onUpgrade(billingCycle)} style={{ padding: "13px 16px", background: B.white, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}
               onMouseEnter={e => e.currentTarget.style.background = "#FFF7ED"}
               onMouseLeave={e => e.currentTarget.style.background = B.white}
             >
@@ -1133,19 +1782,19 @@ const ProfileView = ({ user, isPro, subscription, onSignIn, onSignOut, onUpgrade
           )}
         </div>
 
-        {/* Settings */}
         <div style={{ borderRadius: "16px", overflow: "hidden", border: `1px solid ${B.border}`, marginBottom: "16px" }}>
           {[
+            { label: "Manage Account", sub: "Email, delete account", action: () => onNavigate("account") },
             { label: "Help & Support", sub: "support@keyangle.tech", action: () => window.open("mailto:support@keyangle.tech") },
-            { label: "Privacy Policy", sub: "How we use your data", action: () => {} },
-            { label: "Delete Account", sub: "Permanently remove your data", action: () => {}, danger: true },
+            { label: "Privacy Policy", sub: "How we use your data", action: () => onNavigate("privacy") },
+            { label: "Terms of Service", sub: "Rules for using Mama K", action: () => onNavigate("terms") },
           ].map((item, i, arr) => (
             <div key={item.label} onClick={item.action} style={{ display: "flex", alignItems: "center", gap: "14px", padding: "14px 16px", borderBottom: i < arr.length-1 ? `1px solid ${B.border}` : "none", cursor: "pointer", background: B.white, transition: "background 0.15s" }}
               onMouseEnter={e => e.currentTarget.style.background = B.bg}
               onMouseLeave={e => e.currentTarget.style.background = B.white}
             >
               <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "14px", fontWeight: 500, color: item.danger ? "#DC2626" : B.dark }}>{item.label}</div>
+                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "14px", fontWeight: 500, color: B.dark }}>{item.label}</div>
                 <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted }}>{item.sub}</div>
               </div>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
@@ -1153,15 +1802,12 @@ const ProfileView = ({ user, isPro, subscription, onSignIn, onSignOut, onUpgrade
           ))}
         </div>
 
-        <button onClick={onSignOut} style={{ width: "100%", padding: "14px", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "12px", cursor: "pointer", fontFamily: "'Inter', sans-serif", fontSize: "14px", fontWeight: 600, color: "#DC2626" }}>
-          Sign Out
-        </button>
+        <button onClick={onSignOut} style={{ width: "100%", padding: "14px", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "12px", cursor: "pointer", fontFamily: "'Inter', sans-serif", fontSize: "14px", fontWeight: 600, color: "#DC2626" }}>Sign Out</button>
       </div>
     </div>
   );
 };
 
-/* ─── Bottom Navigation ──────────────────────────────────── */
 const BottomNav = ({ activeTab, onChange }) => {
   const tabs = [
     { id: "home", label: "Home", icon: (active) => (
@@ -1170,8 +1816,8 @@ const BottomNav = ({ activeTab, onChange }) => {
     { id: "search", label: "Search", icon: (active) => (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? B.orange : B.muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
     )},
-    { id: "saved", label: "Saved", icon: (active) => (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? B.orange : "none"} stroke={active ? B.orange : B.muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m19 21-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+    { id: "restaurants", label: "Restaurants", icon: (active) => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? B.orange : B.muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h2a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M17 2v20"/><path d="M17 12a5 5 0 0 0 0-10"/></svg>
     )},
     { id: "profile", label: "Profile", icon: (active) => (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? B.orange : B.muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -1227,6 +1873,7 @@ function AppInner() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelStep, setCancelStep] = useState(1); // 1=retention 2=confirm 3=done
   const [loadingPayment, setLoadingPayment] = useState(false);
+  const [activePage, setActivePage] = useState(null);
   const prevTab = useRef("home");
 
   useEffect(() => {
@@ -1269,16 +1916,31 @@ function AppInner() {
   const openRecipe = r => { setSelected(r); if (user?.uid) trackEngagement(user.uid, { type: "open", recipe: r }); };
   const closeRecipe = () => setSelected(null);
 
-  const handleUpgrade = async () => {
+  const handleUpgrade = async (billingCycle) => {
     if (!user) { setShowPaywall(true); return; }
     setLoadingPayment(true);
     try {
-      const res = await fetch("/api/payment", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ uid: user.uid, email: user.email, name: user.displayName }) });
+      const res = await fetch("/api/payment", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ uid: user.uid, email: user.email, name: user.displayName, plan: billingCycle === "annual" ? "annual" : "monthly" }) });
       const data = await res.json();
       if (data.paymentLink) window.location.href = data.paymentLink;
       else alert("Payment unavailable. Try again.");
     } catch { alert("Something went wrong."); }
     setLoadingPayment(false);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+    try {
+      const pid = "mama-k-recipies";
+      await fetch(`https://firestore.googleapis.com/v1/projects/${pid}/databases/(default)/documents/users/${user.uid}`, { method: "DELETE" }).catch(() => {});
+      await fbDeleteUser(user);
+      setUser(null); setIsPro(false); setBookmarks([]); setSearchHistory([]); setPreferences(null);
+      setSubscription({ status: "free", isPro: false, endDate: null });
+      setActivePage(null); setTab("home");
+    } catch (err) {
+      alert("Couldn't delete account. You may need to sign in again first, then retry.");
+      throw err;
+    }
   };
 
   const handleCancel = async () => {
@@ -1373,6 +2035,7 @@ function AppInner() {
               onOpen={r => { closeRecipe(); setTimeout(() => openRecipe(r), 50); }}
               isPro={isPro}
               onUpgrade={() => setShowPaywall(true)}
+              user={user}
             />
           </div>
         </div>
@@ -1429,16 +2092,14 @@ function AppInner() {
       )}
 
       {tab === "search" && (
-        <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
-          <SearchView
-            user={user} isPro={isPro} bookmarks={bookmarks}
-            onBM={toggleBM} onOpen={openRecipe}
-            onShowPaywall={() => setShowPaywall(true)}
-            searchHistory={searchHistory}
-            searchCount={searchCount}
-            onSyncCount={(newCount) => setSearchCount(newCount)}
-          />
-        </div>
+        <SearchView
+          user={user} isPro={isPro} bookmarks={bookmarks}
+          onBM={toggleBM} onOpen={openRecipe}
+          onShowPaywall={() => setShowPaywall(true)}
+          searchHistory={searchHistory}
+          searchCount={searchCount}
+          onSyncCount={(newCount) => setSearchCount(newCount)}
+        />
       )}
 
       {tab === "saved" && (
@@ -1447,24 +2108,39 @@ function AppInner() {
         </div>
       )}
 
+      {tab === "restaurants" && (
+        <RestaurantsView user={user} />
+      )}
+
       {tab === "profile" && (
-        <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
-          <ErrorBoundary>
-            <ProfileView
-              user={user} isPro={isPro} subscription={subscription}
-              onSignIn={async () => { try { await signInWithGoogle(); } catch {} }}
-              onSignOut={() => { signOutUser(); setIsPro(false); setSearchCount(0); setBookmarks([]); setSearchHistory([]); setPreferences(null); setSubscription({ status: "free", isPro: false, endDate: null }); }}
-              onUpgrade={handleUpgrade}
-              searchCount={searchCount}
-              searchHistory={searchHistory}
-              bookmarks={bookmarks}
-              loadingPayment={loadingPayment}
-              preferences={preferences}
-              onOpen={openRecipe}
-              onGoToSaved={() => handleTabChange("saved")}
-              onCancelSubscription={() => { setCancelStep(1); setShowCancelModal(true); }}
-            />
-          </ErrorBoundary>
+        <ErrorBoundary>
+          <ProfileView
+            user={user} isPro={isPro} subscription={subscription}
+            onSignIn={async () => { try { await signInWithGoogle(); } catch {} }}
+            onSignOut={() => { signOutUser(); setIsPro(false); setSearchCount(0); setBookmarks([]); setSearchHistory([]); setPreferences(null); setSubscription({ status: "free", isPro: false, endDate: null }); }}
+            onUpgrade={handleUpgrade}
+            searchCount={searchCount}
+            searchHistory={searchHistory}
+            bookmarks={bookmarks}
+            loadingPayment={loadingPayment}
+            preferences={preferences}
+            onOpen={openRecipe}
+            onGoToSaved={() => handleTabChange("saved")}
+            onCancelSubscription={() => { setCancelStep(1); setShowCancelModal(true); }}
+            onNavigate={(page) => setActivePage(page)}
+          />
+        </ErrorBoundary>
+      )}
+
+      {/* Full-screen overlay pages, reached from Profile's Personal Chef section and settings list */}
+      {activePage && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 250, overflowY: "auto", background: B.white }}>
+          {activePage === "meal-planner" && <MealPlannerView user={user} isPro={isPro} preferences={preferences} onBack={() => setActivePage(null)} onUpgrade={() => { setActivePage(null); setShowPaywall(true); }} />}
+          {activePage === "pantry" && <PantryView isPro={isPro} onBack={() => setActivePage(null)} onUpgrade={() => { setActivePage(null); setShowPaywall(true); }} onOpenRecipe={r => { setActivePage(null); openRecipe(r); }} bookmarks={bookmarks} onBM={toggleBM} />}
+          {activePage === "ask-ai-history" && <AskAIHistoryView user={user} onBack={() => setActivePage(null)} />}
+          {activePage === "account" && <AccountView user={user} onBack={() => setActivePage(null)} onDeleteAccount={handleDeleteAccount} />}
+          {activePage === "privacy" && <PrivacyView onBack={() => setActivePage(null)} />}
+          {activePage === "terms" && <TermsView onBack={() => setActivePage(null)} />}
         </div>
       )}
 

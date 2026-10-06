@@ -1,4 +1,5 @@
-import { callAI } from "./ai-provider.js";
+import { callAI } from "./_ai-provider.js";
+import { indexRecipes, extractSearchIntent, hybridSearch } from "./_recipe-index.js";
 
 const hotCache = new Map();
 const rateLimits = new Map();
@@ -102,12 +103,13 @@ export default async function handler(req, res) {
   const ip = req.headers["x-forwarded-for"]?.split(",")[0]||"unknown";
   if (isRateLimited(ip)) return res.status(429).json({error:"Too many requests"});
 
-  const { query, isPro, uid } = req.body||{};
+  const { query, isPro, uid, aiSearch } = req.body||{};
   if (!query||typeof query!=="string") return res.status(400).json({error:"No query"});
   const cleanQ = query.trim().slice(0,100);
   if (cleanQ.length<2) return res.status(400).json({error:"Query too short"});
 
-  // Read the limit state — do NOT increment yet. Cache hits below never cost a search.
+  if (aiSearch && !isPro) return res.status(403).json({ error:"AI Search requires Pro", proRequired:true });
+
   const limitInfo = await getUserLimitInfo(uid, isPro);
   if (!limitInfo.allowed) {
     return res.status(403).json({ error:"Search limit reached", limitReached: true, searchCount: limitInfo.current });
@@ -116,14 +118,12 @@ export default async function handler(req, res) {
   const count = isPro ? 6 : 2;
   const cacheKey = `${cleanQ.toLowerCase()}__${isPro}`;
 
-  // 1. Hot memory cache — free, doesn't touch the limit
   const hot = hotCache.get(cacheKey);
   if (hot && Date.now()-hot.time < 1800000) {
     res.setHeader("X-Cache","HIT-MEMORY");
     return res.status(200).json({ recipes:hot.data, isPro, cached:true, searchCount: limitInfo.current });
   }
 
-  // 2. Firestore database cache — free, doesn't touch the limit
   const dbRecipes = await checkFirestore(cleanQ, isPro);
   if (dbRecipes?.length) {
     hotCache.set(cacheKey, { data:dbRecipes, time:Date.now() });
@@ -131,9 +131,23 @@ export default async function handler(req, res) {
     return res.status(200).json({ recipes:dbRecipes, isPro, cached:true, searchCount: limitInfo.current });
   }
 
-  // 3. Genuine cache miss — this is the only path that costs a free search
+  let searchIntent = null;
+  if (aiSearch) {
+    searchIntent = extractSearchIntent(cleanQ);
+    const hybridResults = await hybridSearch(searchIntent, { limitCount: count, isPro });
+    if (hybridResults.length > 0) {
+      hotCache.set(cacheKey, { data: hybridResults, time: Date.now() });
+      res.setHeader("X-Cache", "HIT-HYBRID");
+      return res.status(200).json({ recipes: hybridResults, isPro, cached: true, searchCount: limitInfo.current, matchType: "hybrid" });
+    }
+  }
+
+  const generationQuery = (aiSearch && searchIntent && (searchIntent.ingredients.length || searchIntent.flavourTags.length || searchIntent.categoryHints.length))
+    ? [...searchIntent.ingredients, ...searchIntent.flavourTags, ...searchIntent.mealTypes].join(" ") || cleanQ
+    : cleanQ;
+
   try {
-    const prompt = `Culinary database. Return ONLY valid JSON array of exactly ${count} recipes for: "${cleanQ}". Recipe 1 = most authentic original. Each: {"title":string,"emoji":emoji,"tagline":max 10 words,"time":string,"difficulty":"Easy"|"Medium"|"Advanced","servings":number,"calories":number,"cuisine":string,"region":string,"tags":[2 strings],"ingredients":[6-10 strings],"steps":[4-6 strings]}. ONLY raw JSON array.`;
+    const prompt = `Culinary database. Return ONLY valid JSON array of exactly ${count} recipes for: "${generationQuery}". Recipe 1 = most authentic original. Each: {"title":string,"emoji":emoji,"tagline":max 10 words,"time":string,"difficulty":"Easy"|"Medium"|"Advanced","servings":number,"calories":number,"cuisine":string,"region":string,"tags":[2 strings],"ingredients":[6-10 strings],"steps":[4-6 strings]}. ONLY raw JSON array.`;
     const text = await callAI(prompt, isPro?3000:1200);
     let recipes = JSON.parse(text.replace(/^```json\s*/i,"").replace(/```\s*$/i,"").trim());
     if (!Array.isArray(recipes) || recipes.length === 0) throw new Error("Empty or invalid AI response");
@@ -151,6 +165,7 @@ export default async function handler(req, res) {
 
     hotCache.set(cacheKey, { data:withImages, time:Date.now() });
     saveToFirestore(cleanQ, withImages, isPro);
+    indexRecipes(withImages, isPro); // individually queryable — powers category filters + recommendations
 
     // Only NOW, after confirmed success, spend the user's free search.
     let newCount = limitInfo.current;

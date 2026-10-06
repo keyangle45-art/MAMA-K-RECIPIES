@@ -1,4 +1,5 @@
 import { callAI } from "./_ai-provider.js";
+import { placesProviderStatus } from "./_places-provider.js";
 
 /**
  * System health check — reflects whichever AI provider is actually
@@ -59,6 +60,7 @@ export default async function handler(req, res) {
     aiStatus,
     pexels: pexelsStatus,
     firestore: firestoreStatus,
+    places: placesProviderStatus(),
     hasProviderKey,
     hasPexelsKey: !!pexelsKey,
     freeSearchLimit: 1,

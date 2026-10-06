@@ -548,15 +548,15 @@ const DetailView = ({ recipe, bookmarked, onBM, onBack, onOpen, isPro, onUpgrade
 
 /* ─── Recipe Tools ───────────────────────────────────────── */
 const TOOLS = [
-  { id: "party",    label: "Party Mode",    icon: "\U0001F389", pro: true,  desc: "Scale for any crowd" },
-  { id: "shopping", label: "Shopping List", icon: "\U0001F6D2", pro: false, desc: "Get ingredients list" },
-  { id: "protein",  label: "High Protein",  icon: "\U0001F4AA", pro: true,  desc: "Protein optimised" },
-  { id: "lowcal",   label: "Low Calorie",   icon: "\U0001F957", pro: true,  desc: "Under 400 calories" },
-  { id: "veggie",   label: "Vegetarian",    icon: "\U0001F331", pro: true,  desc: "Plant based version" },
-  { id: "vegan",    label: "Vegan",         icon: "\U0001F966", pro: true,  desc: "No animal products" },
-  { id: "airfryer", label: "Air Fryer",     icon: "\u26A1", pro: true,  desc: "Air fryer adapted" },
-  { id: "budget",   label: "Budget",        icon: "\U0001F4B0", pro: true,  desc: "Student friendly" },
-  { id: "findnear", label: "Find Near Me",  icon: "\U0001F4CD", pro: true,  desc: "Nearby restaurants" },
+  { id: "party",    label: "Party Mode",    icon: "🎉", pro: true,  desc: "Scale for any crowd" },
+  { id: "shopping", label: "Shopping List", icon: "🛒", pro: false, desc: "Get ingredients list" },
+  { id: "protein",  label: "High Protein",  icon: "💪", pro: true,  desc: "Protein optimised" },
+  { id: "lowcal",   label: "Low Calorie",   icon: "🥗", pro: true,  desc: "Under 400 calories" },
+  { id: "veggie",   label: "Vegetarian",    icon: "🌱", pro: true,  desc: "Plant based version" },
+  { id: "vegan",    label: "Vegan",         icon: "🥦", pro: true,  desc: "No animal products" },
+  { id: "airfryer", label: "Air Fryer",     icon: "⚡", pro: true,  desc: "Air fryer adapted" },
+  { id: "budget",   label: "Budget",        icon: "💰", pro: true,  desc: "Student friendly" },
+  { id: "findnear", label: "Find Near Me",  icon: "📍", pro: true,  desc: "Nearby restaurants" },
 ];
 
 const ASK_AI_SUGGESTIONS = ["Can I freeze this?", "What can I serve with it?", "Is this spicy?", "Can I cook this tomorrow?"];
@@ -680,7 +680,7 @@ const RecipeTools = ({ recipe, isPro, onUpgrade, user }) => {
 
       {activeTool === "party" && (
         <div style={{ background: B.bg, borderRadius: "16px", padding: "20px", animation: "fadeUp 0.3s ease" }}>
-          <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "15px", color: B.dark, marginBottom: "4px" }}>\U0001F389 Party Mode</div>
+          <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "15px", color: B.dark, marginBottom: "4px" }}>🎉 Party Mode</div>
           <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted, marginBottom: "16px" }}>Scaled for {partySize} people (original: {baseServings} servings)</div>
           <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "16px" }}>
             {[10, 20, 30, 50, 75, 100].map(n => (
@@ -705,8 +705,8 @@ const RecipeTools = ({ recipe, isPro, onUpgrade, user }) => {
       {activeTool === "shopping" && (
         <div style={{ background: B.bg, borderRadius: "16px", padding: "20px", animation: "fadeUp 0.3s ease" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
-            <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "15px", color: B.dark }}>\U0001F6D2 Shopping List</div>
-            <button onClick={() => { const text = `Shopping List — ${recipe.title}\n\n` + (recipe.ingredients || []).map(i => `\u25A1 ${i}`).join("\n"); navigator.clipboard?.writeText(text).then(() => alert("Copied to clipboard!")); }} style={{ background: B.dark, color: "#fff", border: "none", borderRadius: "8px", padding: "6px 12px", cursor: "pointer", fontFamily: "'Inter', sans-serif", fontSize: "12px", fontWeight: 600 }}>Copy all</button>
+            <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "15px", color: B.dark }}>🛒 Shopping List</div>
+            <button onClick={() => { const text = `Shopping List — ${recipe.title}\n\n` + (recipe.ingredients || []).map(i => `□ ${i}`).join("\n"); navigator.clipboard?.writeText(text).then(() => alert("Copied to clipboard!")); }} style={{ background: B.dark, color: "#fff", border: "none", borderRadius: "8px", padding: "6px 12px", cursor: "pointer", fontFamily: "'Inter', sans-serif", fontSize: "12px", fontWeight: 600 }}>Copy all</button>
           </div>
           {groupIngredients(recipe.ingredients || []).map(([group, items]) => (
             <div key={group} style={{ marginBottom: "14px" }}>
@@ -714,7 +714,7 @@ const RecipeTools = ({ recipe, isPro, onUpgrade, user }) => {
               {items.map((ing, i) => (
                 <div key={i} onClick={() => setShoppingDone(p => ({...p, [ing]: !p[ing]}))} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 0", borderBottom: `1px solid ${B.border}`, cursor: "pointer" }}>
                   <div style={{ width: "18px", height: "18px", borderRadius: "4px", border: `2px solid ${shoppingDone[ing] ? B.orange : B.border}`, background: shoppingDone[ing] ? B.orange : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.15s" }}>
-                    {shoppingDone[ing] && <span style={{ color: "#fff", fontSize: "11px", fontWeight: 700 }}>\u2713</span>}
+                    {shoppingDone[ing] && <span style={{ color: "#fff", fontSize: "11px", fontWeight: 700 }}>✓</span>}
                   </div>
                   <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.dark, textDecoration: shoppingDone[ing] ? "line-through" : "none", opacity: shoppingDone[ing] ? 0.4 : 1 }}>{ing}</span>
                 </div>
@@ -750,7 +750,7 @@ const RecipeTools = ({ recipe, isPro, onUpgrade, user }) => {
                   <div style={{ background: "#FFF7ED", border: "1px solid #FED7AA", borderRadius: "10px", padding: "10px 12px", marginBottom: "16px", fontFamily: "'Inter', sans-serif", fontSize: "12px", color: "#9A3412" }}>{t.substitution_note}</div>
                 )}
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "16px" }}>
-                  {[["\u23F1", t.time], ["\U0001F465", `${t.servings} servings`], ["\U0001F525", `~${t.calories} cal`], t.protein_grams ? ["\U0001F4AA", `${t.protein_grams}g protein`] : null, t.estimated_cost ? ["\U0001F4B0", t.estimated_cost] : null, t.cost_reduction_percent ? ["\U0001F4C9", `${t.cost_reduction_percent}% cheaper`] : null].filter(Boolean).map(([icon, val], i) => (
+                  {[["⏱", t.time], ["👥", `${t.servings} servings`], ["🔥", `~${t.calories} cal`], t.protein_grams ? ["💪", `${t.protein_grams}g protein`] : null, t.estimated_cost ? ["💰", t.estimated_cost] : null, t.cost_reduction_percent ? ["📉", `${t.cost_reduction_percent}% cheaper`] : null].filter(Boolean).map(([icon, val], i) => (
                     <div key={i} style={{ background: B.white, border: `1px solid ${B.border}`, borderRadius: "10px", padding: "6px 12px", fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.dark, display: "flex", alignItems: "center", gap: "5px" }}><span>{icon}</span>{val}</div>
                   ))}
                 </div>
@@ -814,12 +814,12 @@ const RecipeTools = ({ recipe, isPro, onUpgrade, user }) => {
         <div style={{ background: B.bg, borderRadius: "16px", padding: "18px", animation: "fadeUp 0.3s ease" }}>
           {!placesConfigured ? (
             <div style={{ textAlign: "center", padding: "16px 0" }}>
-              <div style={{ fontSize: "28px", marginBottom: "10px" }}>\U0001F4CD</div>
+              <div style={{ fontSize: "28px", marginBottom: "10px" }}>📍</div>
               <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.muted }}>Find Near Me isn't set up yet on this account.</div>
             </div>
           ) : locStatus === "idle" && !restaurants ? (
             <div style={{ textAlign: "center", padding: "12px 0" }}>
-              <div style={{ fontSize: "28px", marginBottom: "10px" }}>\U0001F4CD</div>
+              <div style={{ fontSize: "28px", marginBottom: "10px" }}>📍</div>
               <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "14px", color: B.dark, marginBottom: "4px" }}>Find restaurants near you</div>
               <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted, marginBottom: "16px" }}>Serving {recipe.cuisine || recipe.region || "this"} food</div>
               <button onClick={requestLocationAndSearch} className="btn-primary" style={{ padding: "10px 20px", borderRadius: "10px", fontSize: "13px" }}>Use My Location</button>
@@ -862,10 +862,10 @@ const RecipeTools = ({ recipe, isPro, onUpgrade, user }) => {
               {restaurants.map((r, i) => (
                 <div key={i} style={{ background: B.white, borderRadius: "12px", padding: "12px 14px", marginBottom: "8px", border: `1px solid ${B.border}` }}>
                   <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", fontWeight: 600, color: B.dark, marginBottom: "3px" }}>{r.name}</div>
-                  <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", color: B.muted, marginBottom: "8px" }}>{[r.rating ? `${r.rating} \u2605` : null, r.distanceKm != null ? `${r.distanceKm} km` : null, r.openNow != null ? (r.openNow ? "Open now" : "Closed") : null].filter(Boolean).join(" \u00B7 ")}</div>
+                  <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", color: B.muted, marginBottom: "8px" }}>{[r.rating ? `${r.rating} ★` : null, r.distanceKm != null ? `${r.distanceKm} km` : null, r.openNow != null ? (r.openNow ? "Open now" : "Closed") : null].filter(Boolean).join(" · ")}</div>
                   <div style={{ display: "flex", gap: "8px" }}>
                     <a href={r.mapsUrl} target="_blank" rel="noreferrer" style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.orange, fontWeight: 600, textDecoration: "none" }}>View Restaurant</a>
-                    <span style={{ color: B.border }}>\u00B7</span>
+                    <span style={{ color: B.border }}>·</span>
                     <a href={r.directionsUrl} target="_blank" rel="noreferrer" style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.orange, fontWeight: 600, textDecoration: "none" }}>Directions</a>
                   </div>
                 </div>
@@ -879,13 +879,13 @@ const RecipeTools = ({ recipe, isPro, onUpgrade, user }) => {
 };
 
 const MEAL_PLAN_GOALS = [
-  { id: "lose_weight",  label: "Lose Weight",   icon: "\u2696\ufe0f" },
-  { id: "build_muscle", label: "Build Muscle",  icon: "\U0001F4AA" },
-  { id: "family",       label: "Family Meals",  icon: "\U0001F468\u200D\U0001F469\u200D\U0001F467" },
-  { id: "budget",       label: "Budget Meals",  icon: "\U0001F4B0" },
-  { id: "quick",        label: "Quick Meals",   icon: "\u26A1" },
-  { id: "vegetarian",   label: "Vegetarian",    icon: "\U0001F331" },
-  { id: "high_protein", label: "High Protein",  icon: "\U0001F357" },
+  { id: "lose_weight",  label: "Lose Weight",   icon: "⚖️" },
+  { id: "build_muscle", label: "Build Muscle",  icon: "💪" },
+  { id: "family",       label: "Family Meals",  icon: "👨‍👩‍👧" },
+  { id: "budget",       label: "Budget Meals",  icon: "💰" },
+  { id: "quick",        label: "Quick Meals",   icon: "⚡" },
+  { id: "vegetarian",   label: "Vegetarian",    icon: "🌱" },
+  { id: "high_protein", label: "High Protein",  icon: "🍗" },
 ];
 
 const MealPlannerView = ({ user, isPro, preferences, onBack, onUpgrade }) => {
@@ -930,7 +930,7 @@ const MealPlannerView = ({ user, isPro, preferences, onBack, onUpgrade }) => {
   return (
     <div style={{ background: B.white, minHeight: "100vh", paddingBottom: "80px" }}>
       <div style={{ padding: "12px 16px", position: "sticky", top: 0, background: "rgba(255,255,255,0.95)", backdropFilter: "blur(12px)", zIndex: 80, borderBottom: `1px solid ${B.border}` }}>
-        <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", color: B.orange, fontSize: "14px", fontWeight: 500, fontFamily: "'Inter', sans-serif", padding: 0 }}>\u2039 Back</button>
+        <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", color: B.orange, fontSize: "14px", fontWeight: 500, fontFamily: "'Inter', sans-serif", padding: 0 }}>‹ Back</button>
       </div>
       <div style={{ maxWidth: "700px", margin: "0 auto", padding: "20px 16px" }}>
         <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "22px", color: B.dark, marginBottom: "4px" }}>Meal Planner</div>
@@ -990,7 +990,7 @@ const MealPlannerView = ({ user, isPro, preferences, onBack, onUpgrade }) => {
                     <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", fontWeight: 700, color: B.muted, textTransform: "capitalize", marginBottom: "6px" }}>{group.replace(/_/g, " ")}</div>
                     {items.map((item, i) => (
                       <div key={i} onClick={() => setChecked(p => ({...p, [item]: !p[item]}))} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "7px 0", borderBottom: `1px solid ${B.border}`, cursor: "pointer" }}>
-                        <div style={{ width: "16px", height: "16px", borderRadius: "4px", border: `2px solid ${checked[item] ? B.orange : B.border}`, background: checked[item] ? B.orange : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{checked[item] && <span style={{ color: "#fff", fontSize: "10px" }}>\u2713</span>}</div>
+                        <div style={{ width: "16px", height: "16px", borderRadius: "4px", border: `2px solid ${checked[item] ? B.orange : B.border}`, background: checked[item] ? B.orange : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{checked[item] && <span style={{ color: "#fff", fontSize: "10px" }}>✓</span>}</div>
                         <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.dark, textDecoration: checked[item] ? "line-through" : "none", opacity: checked[item] ? 0.4 : 1 }}>{item}</span>
                       </div>
                     ))}
@@ -1002,7 +1002,7 @@ const MealPlannerView = ({ user, isPro, preferences, onBack, onUpgrade }) => {
         )}
         {!plan && !loading && (
           <div style={{ textAlign: "center", padding: "40px 0", color: B.muted }}>
-            <div style={{ fontSize: "40px", marginBottom: "12px", opacity: 0.3 }}>\U0001F4C5</div>
+            <div style={{ fontSize: "40px", marginBottom: "12px", opacity: 0.3 }}>📅</div>
             <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px" }}>Pick your goals and generate your first plan</div>
           </div>
         )}
@@ -1034,7 +1034,7 @@ const PantryView = ({ isPro, onBack, onUpgrade, onOpenRecipe, bookmarks, onBM })
   return (
     <div style={{ background: B.white, minHeight: "100vh", paddingBottom: "80px" }}>
       <div style={{ padding: "12px 16px", position: "sticky", top: 0, background: "rgba(255,255,255,0.95)", backdropFilter: "blur(12px)", zIndex: 80, borderBottom: `1px solid ${B.border}` }}>
-        <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", color: B.orange, fontSize: "14px", fontWeight: 500, fontFamily: "'Inter', sans-serif", padding: 0 }}>\u2039 Back</button>
+        <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", color: B.orange, fontSize: "14px", fontWeight: 500, fontFamily: "'Inter', sans-serif", padding: 0 }}>‹ Back</button>
       </div>
       <div style={{ maxWidth: "700px", margin: "0 auto", padding: "20px 16px" }}>
         <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "22px", color: B.dark, marginBottom: "4px" }}>Pantry Mode</div>
@@ -1048,7 +1048,7 @@ const PantryView = ({ isPro, onBack, onUpgrade, onOpenRecipe, bookmarks, onBM })
             {ingredients.map(ing => (
               <div key={ing} style={{ display: "flex", alignItems: "center", gap: "6px", background: "#FFF7ED", border: `1px solid #FED7AA`, borderRadius: "20px", padding: "6px 8px 6px 14px" }}>
                 <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.dark }}>{ing}</span>
-                <button onClick={() => removeIngredient(ing)} style={{ background: "none", border: "none", cursor: "pointer", color: B.muted, fontSize: "15px", lineHeight: 1, padding: "0 4px" }}>\u00d7</button>
+                <button onClick={() => removeIngredient(ing)} style={{ background: "none", border: "none", cursor: "pointer", color: B.muted, fontSize: "15px", lineHeight: 1, padding: "0 4px" }}>×</button>
               </div>
             ))}
           </div>
@@ -1076,96 +1076,129 @@ const PantryView = ({ isPro, onBack, onUpgrade, onOpenRecipe, bookmarks, onBM })
   );
 };
 
-const RestaurantsView = ({ onBack, user }) => {
+const RESTAURANT_QUICK_FILTERS = ["Nearby", "Pizza", "Sushi", "Burgers", "Coffee", "Thai", "Italian", "Vegetarian"];
+
+const RestaurantsView = ({ user }) => {
   const [query, setQuery] = useState("");
-  const [locStatus, setLocStatus] = useState("idle");
+  const [locStatus, setLocStatus] = useState("idle"); // idle | requesting | granted | denied
   const [locText, setLocText] = useState("");
   const [restaurants, setRestaurants] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [configured, setConfigured] = useState(true);
+  const [activeFilter, setActiveFilter] = useState("Nearby");
 
-  const requestLocationAndSearch = () => {
-    if (!query.trim()) return;
+  // Location-first: request geolocation and show a feed immediately on
+  // open, matching the rest of the app's discovery-first feel — searching
+  // is there to narrow down, not required before anything shows.
+  useEffect(() => {
     if (!navigator.geolocation) { setLocStatus("denied"); return; }
     setLocStatus("requesting");
     navigator.geolocation.getCurrentPosition(
-      (pos) => { setLocStatus("granted"); fetchRestaurants({ lat: pos.coords.latitude, lng: pos.coords.longitude }); },
-      () => setLocStatus("denied"), { timeout: 8000 }
+      (pos) => { setLocStatus("granted"); fetchRestaurants({ lat: pos.coords.latitude, lng: pos.coords.longitude, term: "restaurants" }); },
+      () => setLocStatus("denied"),
+      { timeout: 8000 }
     );
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const fetchRestaurants = ({ lat, lng, locationText } = {}) => {
-    if (!query.trim()) return;
+  const fetchRestaurants = ({ lat, lng, locationText, term } = {}) => {
+    const searchTerm = term || query.trim() || "restaurants";
     setLoading(true); setError(null);
-    fetch("/api/ai-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "restaurants", dishOrCuisine: query.trim(), lat, lng, locationText }) })
+    fetch("/api/ai-tools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "restaurants", dishOrCuisine: searchTerm, lat, lng, locationText }) })
       .then(r => r.json())
       .then(d => { if (!d.configured) { setConfigured(false); setRestaurants([]); return; } if (d.error) setError(d.error); setRestaurants(d.restaurants || []); })
       .catch(() => setError("Couldn't load restaurants right now"))
       .finally(() => setLoading(false));
   };
 
+  const runSearch = (term) => {
+    setActiveFilter(null);
+    if (locStatus === "granted") fetchRestaurants({ term });
+    else if (locText.trim()) fetchRestaurants({ locationText: locText.trim(), term });
+  };
+
+  const applyFilter = (f) => {
+    setActiveFilter(f);
+    const term = f === "Nearby" ? "restaurants" : f;
+    if (locStatus === "granted") fetchRestaurants({ term });
+    else if (locText.trim()) fetchRestaurants({ locationText: locText.trim(), term });
+  };
+
   return (
     <div style={{ background: B.white, minHeight: "100vh", paddingBottom: "80px" }}>
-      <div style={{ maxWidth: "700px", margin: "0 auto", padding: "20px 16px" }}>
+      <div style={{ padding: "16px", maxWidth: "700px", margin: "0 auto" }}>
         <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "22px", color: B.dark, marginBottom: "4px" }}>Restaurants</div>
-        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.muted, marginBottom: "20px" }}>Find places serving what you're craving</div>
+        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.muted, marginBottom: "16px" }}>What's good nearby</div>
 
-        <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
-          <input value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && requestLocationAndSearch()} placeholder="Thai food, pizza, sushi..." style={{ flex: 1, padding: "12px 16px", borderRadius: "12px", border: `1px solid ${B.border}`, fontFamily: "'Inter', sans-serif", fontSize: "14px", outline: "none" }} />
-          <button onClick={requestLocationAndSearch} className="btn-primary" style={{ padding: "0 20px", borderRadius: "12px", fontSize: "14px" }}>Search</button>
+        <div style={{ display: "flex", gap: "8px", marginBottom: "14px" }}>
+          <input value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && runSearch(query)} placeholder="Search a cuisine or dish..." style={{ flex: 1, padding: "12px 16px", borderRadius: "12px", border: `1px solid ${B.border}`, fontFamily: "'Inter', sans-serif", fontSize: "14px", outline: "none" }} />
+          <button onClick={() => runSearch(query)} className="btn-primary" style={{ padding: "0 20px", borderRadius: "12px", fontSize: "14px" }}>Search</button>
+        </div>
+
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "18px" }}>
+          {RESTAURANT_QUICK_FILTERS.map(f => (
+            <button key={f} onClick={() => applyFilter(f)} style={{
+              padding: "7px 14px", borderRadius: "20px", cursor: "pointer",
+              border: `1px solid ${activeFilter === f ? B.orange : B.border}`,
+              background: activeFilter === f ? "#FFF7ED" : B.bg,
+              color: activeFilter === f ? B.orange : B.dark,
+              fontFamily: "'Inter', sans-serif", fontSize: "12px", fontWeight: activeFilter === f ? 600 : 400,
+            }}>{f}</button>
+          ))}
         </div>
 
         {!configured && (
-          <div style={{ textAlign: "center", padding: "40px 0", color: B.muted }}>
-            <div style={{ fontSize: "40px", marginBottom: "12px", opacity: 0.3 }}>\U0001F4CD</div>
+          <div style={{ textAlign: "center", padding: "50px 0", color: B.muted }}>
+            <div style={{ fontSize: "40px", marginBottom: "12px", opacity: 0.3 }}>📍</div>
             <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px" }}>Restaurant search isn't set up yet on this account.</div>
           </div>
         )}
 
-        {locStatus === "denied" && configured && !restaurants && (
-          <div style={{ textAlign: "center", padding: "20px 0" }}>
+        {configured && locStatus === "requesting" && (
+          <div style={{ textAlign: "center", padding: "40px 0" }}>
+            <div style={{ display: "flex", gap: "6px", justifyContent: "center" }}>
+              {[0,1,2].map(i => <div key={i} style={{ width: "6px", height: "6px", borderRadius: "50%", background: B.orange, animation: "pulse 1.2s ease infinite", animationDelay: `${i*0.2}s` }} />)}
+            </div>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.muted, marginTop: "10px" }}>Finding what's near you...</div>
+          </div>
+        )}
+
+        {configured && locStatus === "denied" && !restaurants && (
+          <div style={{ textAlign: "center", padding: "30px 0" }}>
             <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "14px", color: B.dark, marginBottom: "4px" }}>Where should we look?</div>
-            <div style={{ display: "flex", gap: "8px", maxWidth: "320px", margin: "14px auto 0" }}>
-              <input value={locText} onChange={e => setLocText(e.target.value)} onKeyDown={e => e.key === "Enter" && locText.trim() && fetchRestaurants({ locationText: locText.trim() })} placeholder="e.g. Brooklyn" style={{ flex: 1, padding: "9px 12px", borderRadius: "10px", border: `1px solid ${B.border}`, fontFamily: "'Inter', sans-serif", fontSize: "13px", outline: "none" }} />
-              <button onClick={() => locText.trim() && fetchRestaurants({ locationText: locText.trim() })} className="btn-primary" style={{ padding: "9px 16px", borderRadius: "10px", fontSize: "13px" }}>Go</button>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted, marginBottom: "14px" }}>Location access wasn't available — enter a place instead</div>
+            <div style={{ display: "flex", gap: "8px", maxWidth: "320px", margin: "0 auto" }}>
+              <input value={locText} onChange={e => setLocText(e.target.value)} onKeyDown={e => e.key === "Enter" && locText.trim() && fetchRestaurants({ locationText: locText.trim(), term: "restaurants" })} placeholder="e.g. Brooklyn" style={{ flex: 1, padding: "9px 12px", borderRadius: "10px", border: `1px solid ${B.border}`, fontFamily: "'Inter', sans-serif", fontSize: "13px", outline: "none" }} />
+              <button onClick={() => locText.trim() && fetchRestaurants({ locationText: locText.trim(), term: "restaurants" })} className="btn-primary" style={{ padding: "9px 16px", borderRadius: "10px", fontSize: "13px" }}>Go</button>
             </div>
           </div>
         )}
 
         {loading && (
-          <div style={{ textAlign: "center", padding: "30px 0" }}>
-            <div style={{ display: "flex", gap: "6px", justifyContent: "center" }}>
-              {[0,1,2].map(i => <div key={i} style={{ width: "6px", height: "6px", borderRadius: "50%", background: B.orange, animation: "pulse 1.2s ease infinite", animationDelay: `${i*0.2}s` }} />)}
-            </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            {Array(4).fill(0).map((_, i) => <div key={i} className="skeleton" style={{ height: "76px", borderRadius: "14px" }} />)}
           </div>
         )}
 
         {error && <div style={{ textAlign: "center", color: "#DC2626", fontFamily: "'Inter', sans-serif", fontSize: "13px", padding: "16px 0" }}>{error}</div>}
 
         {restaurants && restaurants.length === 0 && !loading && (
-          <div style={{ textAlign: "center", padding: "30px 0", fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.muted }}>No restaurants found.</div>
+          <div style={{ textAlign: "center", padding: "40px 0", fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.muted }}>No restaurants found.</div>
         )}
 
-        {restaurants && restaurants.length > 0 && (
-          <div>
+        {restaurants && restaurants.length > 0 && !loading && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
             {restaurants.map((r, i) => (
-              <div key={i} style={{ background: B.bg, borderRadius: "14px", padding: "14px 16px", marginBottom: "10px" }}>
+              <div key={i} style={{ background: B.bg, borderRadius: "14px", padding: "14px 16px", animation: "fadeUp 0.3s ease both", animationDelay: `${i*40}ms` }}>
                 <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "14px", fontWeight: 600, color: B.dark, marginBottom: "4px" }}>{r.name}</div>
-                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted, marginBottom: "10px" }}>{[r.rating ? `${r.rating} \u2605` : null, r.distanceKm != null ? `${r.distanceKm} km` : null, r.openNow != null ? (r.openNow ? "Open now" : "Closed") : null].filter(Boolean).join(" \u00B7 ")}</div>
+                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted, marginBottom: "10px" }}>{[r.rating ? `${r.rating} ★` : null, r.distanceKm != null ? `${r.distanceKm} km` : null, r.openNow != null ? (r.openNow ? "Open now" : "Closed") : null, r.address].filter(Boolean).join(" · ")}</div>
                 <div style={{ display: "flex", gap: "10px" }}>
                   <a href={r.mapsUrl} target="_blank" rel="noreferrer" style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.orange, fontWeight: 600, textDecoration: "none" }}>View</a>
                   <a href={r.directionsUrl} target="_blank" rel="noreferrer" style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.orange, fontWeight: 600, textDecoration: "none" }}>Directions</a>
                 </div>
               </div>
             ))}
-          </div>
-        )}
-
-        {!restaurants && !loading && locStatus === "idle" && (
-          <div style={{ textAlign: "center", padding: "50px 0", color: B.muted }}>
-            <div style={{ fontSize: "40px", marginBottom: "12px", opacity: 0.3 }}>\U0001F37D\ufe0f</div>
-            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px" }}>Search for a cuisine or dish to find nearby restaurants</div>
           </div>
         )}
       </div>
@@ -1179,18 +1212,18 @@ const AccountView = ({ user, onBack, onDeleteAccount }) => {
   return (
     <div style={{ background: B.white, minHeight: "100vh", paddingBottom: "80px" }}>
       <div style={{ padding: "12px 16px", position: "sticky", top: 0, background: "rgba(255,255,255,0.95)", backdropFilter: "blur(12px)", zIndex: 80, borderBottom: `1px solid ${B.border}` }}>
-        <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", color: B.orange, fontSize: "14px", fontWeight: 500, fontFamily: "'Inter', sans-serif", padding: 0 }}>\u2039 Back</button>
+        <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", color: B.orange, fontSize: "14px", fontWeight: 500, fontFamily: "'Inter', sans-serif", padding: 0 }}>‹ Back</button>
       </div>
       <div style={{ maxWidth: "600px", margin: "0 auto", padding: "20px 16px" }}>
         <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "22px", color: B.dark, marginBottom: "20px" }}>Manage Account</div>
         <div style={{ borderRadius: "16px", overflow: "hidden", border: `1px solid ${B.border}`, marginBottom: "20px" }}>
           <div style={{ padding: "16px", borderBottom: `1px solid ${B.border}` }}>
             <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", color: B.muted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "4px" }}>Name</div>
-            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "14px", color: B.dark }}>{user?.displayName || "\u2014"}</div>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "14px", color: B.dark }}>{user?.displayName || "—"}</div>
           </div>
           <div style={{ padding: "16px" }}>
             <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", color: B.muted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "4px" }}>Email</div>
-            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "14px", color: B.dark }}>{user?.email || "\u2014"}</div>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "14px", color: B.dark }}>{user?.email || "—"}</div>
           </div>
         </div>
         <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted, lineHeight: 1.6, marginBottom: "24px" }}>Signed in with Google. To change your name, email, or password, manage it directly through your Google Account.</div>
@@ -1222,7 +1255,7 @@ const AskAIHistoryView = ({ user, onBack }) => {
   return (
     <div style={{ background: B.white, minHeight: "100vh", paddingBottom: "80px" }}>
       <div style={{ padding: "12px 16px", position: "sticky", top: 0, background: "rgba(255,255,255,0.95)", backdropFilter: "blur(12px)", zIndex: 80, borderBottom: `1px solid ${B.border}` }}>
-        <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", color: B.orange, fontSize: "14px", fontWeight: 500, fontFamily: "'Inter', sans-serif", padding: 0 }}>\u2039 Back</button>
+        <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", color: B.orange, fontSize: "14px", fontWeight: 500, fontFamily: "'Inter', sans-serif", padding: 0 }}>‹ Back</button>
       </div>
       <div style={{ maxWidth: "700px", margin: "0 auto", padding: "20px 16px" }}>
         <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "22px", color: B.dark, marginBottom: "4px" }}>Ask AI</div>
@@ -1230,13 +1263,13 @@ const AskAIHistoryView = ({ user, onBack }) => {
         {loading && <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>{Array(3).fill(0).map((_, i) => <div key={i} className="skeleton" style={{ height: "60px", borderRadius: "12px" }} />)}</div>}
         {!loading && conversations.length === 0 && (
           <div style={{ textAlign: "center", padding: "60px 0", color: B.muted }}>
-            <div style={{ fontSize: "40px", marginBottom: "12px", opacity: 0.3 }}>\u2728</div>
+            <div style={{ fontSize: "40px", marginBottom: "12px", opacity: 0.3 }}>✨</div>
             <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px" }}>Ask a question from any recipe page to start a conversation</div>
           </div>
         )}
         {!loading && conversations.map((c, i) => (
           <div key={i} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "14px 12px", borderBottom: `1px solid ${B.border}` }}>
-            <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: "#FFF7ED", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: "15px" }}>\u2728</div>
+            <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: "#FFF7ED", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: "15px" }}>✨</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", fontWeight: 600, color: B.dark }}>{c.recipeTitle}</div>
               <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.lastMessage}</div>
@@ -1251,7 +1284,7 @@ const AskAIHistoryView = ({ user, onBack }) => {
 const PrivacyView = ({ onBack }) => (
   <div style={{ background: B.white, minHeight: "100vh", paddingBottom: "80px" }}>
     <div style={{ padding: "12px 16px", position: "sticky", top: 0, background: "rgba(255,255,255,0.95)", backdropFilter: "blur(12px)", zIndex: 80, borderBottom: `1px solid ${B.border}` }}>
-      <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", color: B.orange, fontSize: "14px", fontWeight: 500, fontFamily: "'Inter', sans-serif", padding: 0 }}>\u2039 Back</button>
+      <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", color: B.orange, fontSize: "14px", fontWeight: 500, fontFamily: "'Inter', sans-serif", padding: 0 }}>‹ Back</button>
     </div>
     <div style={{ maxWidth: "640px", margin: "0 auto", padding: "24px 20px", fontFamily: "'Inter', sans-serif" }}>
       <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "24px", color: B.dark, marginBottom: "6px" }}>Privacy Policy</div>
@@ -1278,7 +1311,7 @@ const PrivacyView = ({ onBack }) => (
 const TermsView = ({ onBack }) => (
   <div style={{ background: B.white, minHeight: "100vh", paddingBottom: "80px" }}>
     <div style={{ padding: "12px 16px", position: "sticky", top: 0, background: "rgba(255,255,255,0.95)", backdropFilter: "blur(12px)", zIndex: 80, borderBottom: `1px solid ${B.border}` }}>
-      <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", color: B.orange, fontSize: "14px", fontWeight: 500, fontFamily: "'Inter', sans-serif", padding: 0 }}>\u2039 Back</button>
+      <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", color: B.orange, fontSize: "14px", fontWeight: 500, fontFamily: "'Inter', sans-serif", padding: 0 }}>‹ Back</button>
     </div>
     <div style={{ maxWidth: "640px", margin: "0 auto", padding: "24px 20px", fontFamily: "'Inter', sans-serif" }}>
       <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "24px", color: B.dark, marginBottom: "6px" }}>Terms of Service</div>
@@ -1485,11 +1518,11 @@ const SearchView = ({ user, isPro, bookmarks, onBM, onOpen, onShowPaywall, searc
               placeholder={aiMode ? "Something creamy tonight, under 20 minutes..." : "Jollof Rice, Pasta, Healthy Breakfast..."}
               style={{ flex: 1, border: "none", outline: "none", padding: "13px 0", fontFamily: "'Inter', sans-serif", fontSize: "15px", background: "transparent", color: B.dark }}
             />
-            {query && <button onClick={() => { setQuery(""); setResults([]); setSearched(false); }} style={{ background: "none", border: "none", padding: "0 14px", cursor: "pointer", color: B.muted, fontSize: "18px" }}>\u00d7</button>}
+            {query && <button onClick={() => { setQuery(""); setResults([]); setSearched(false); }} style={{ background: "none", border: "none", padding: "0 14px", cursor: "pointer", color: B.muted, fontSize: "18px" }}>×</button>}
             <button onClick={doSearch} className="btn-primary" style={{ margin: "5px", borderRadius: "9px", padding: "9px 16px", fontSize: "13px" }}>Search</button>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 2px 0" }}>
-            {[["recipe", "Recipe Search", false], ["ai", "AI Search", true]].map(([id, label, needsPro]) => (
+            {[["recipe", "Recipe Search", false], ["ai", "Ask AI", true]].map(([id, label, needsPro]) => (
               <button key={id} onClick={() => needsPro && !isPro ? onShowPaywall() : setAiMode(needsPro)} style={{
                 display: "flex", alignItems: "center", gap: "5px", padding: "6px 12px", borderRadius: "16px", cursor: "pointer",
                 border: `1px solid ${aiMode === needsPro ? B.orange : B.border}`,
@@ -1550,7 +1583,7 @@ const SearchView = ({ user, isPro, bookmarks, onBM, onOpen, onShowPaywall, searc
             )}
             {results.length === 0 ? (
               <div style={{ textAlign: "center", padding: "60px 0", color: B.muted }}>
-                <div style={{ fontSize: "40px", marginBottom: "12px" }}>{searchError ? "\u26A0\uFE0F" : "\U0001F50D"}</div>
+                <div style={{ fontSize: "40px", marginBottom: "12px" }}>{searchError ? "⚠️" : "🔍"}</div>
                 <div style={{ fontFamily: "'Poppins', sans-serif", fontSize: "16px", marginBottom: "6px" }}>{searchError ? "Something went wrong" : "No recipes found"}</div>
                 <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: B.muted, marginBottom: "16px" }}>{searchError ? "That didn't cost your free search — try again." : "Try a different dish or spelling."}</div>
                 {searchError && <button onClick={() => doSearch(query)} className="btn-primary" style={{ padding: "10px 24px", borderRadius: "10px", fontSize: "13px" }}>Try Again</button>}
@@ -1620,11 +1653,11 @@ const ProfileView = ({ user, isPro, subscription, onSignIn, onSignOut, onUpgrade
             <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "15px", color: B.dark }}>{user.displayName || "User"}</div>
             <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.muted }}>{cookingPersonality}</div>
           </div>
-          <span style={{ background: isPro ? "#F0FDF4" : B.bg, color: isPro ? "#16A34A" : B.muted, border: `1px solid ${isPro ? "#BBF7D0" : B.border}`, borderRadius: "20px", padding: "3px 12px", fontSize: "11px", fontWeight: 700, flexShrink: 0 }}>{isPro ? "\u2713 Pro" : "Free"}</span>
+          <span style={{ background: isPro ? "#F0FDF4" : B.bg, color: isPro ? "#16A34A" : B.muted, border: `1px solid ${isPro ? "#BBF7D0" : B.border}`, borderRadius: "20px", padding: "3px 12px", fontSize: "11px", fontWeight: 700, flexShrink: 0 }}>{isPro ? "✓ Pro" : "Free"}</span>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "16px" }}>
-          {[["\u2764\uFE0F", bookmarks?.length || 0, "Saved"], ["\U0001F9E0", tastePrimary, "Top Taste"], ["\U0001F9ED", recipesExplored, "Recipes Explored"]].map(([icon, val, label]) => (
+          {[["❤️", bookmarks?.length || 0, "Saved"], ["🧠", tastePrimary, "Top Taste"], ["🧭", recipesExplored, "Recipes Explored"]].map(([icon, val, label]) => (
             <div key={label} style={{ background: B.bg, borderRadius: "14px", padding: "14px 8px", textAlign: "center" }}>
               <div style={{ fontSize: "18px", marginBottom: "4px" }}>{icon}</div>
               <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: String(val).length > 7 ? "10px" : "13px", color: B.dark, lineHeight: 1.2 }}>{val}</div>
@@ -1658,10 +1691,10 @@ const ProfileView = ({ user, isPro, subscription, onSignIn, onSignOut, onUpgrade
           <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "15px", color: B.dark, marginBottom: "10px" }}>Your Personal Chef</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
             {[
-              { id: "meal-planner", icon: "\U0001F4C5", label: "Meal Planner", desc: "Plan your week" },
-              { id: "pantry", icon: "\U0001F958", label: "Pantry Mode", desc: "Cook what you have" },
-              { id: "ask-ai-history", icon: "\u2728", label: "Ask AI", desc: "Past conversations" },
-              { id: "saved", icon: "\U0001F516", label: "Saved Recipes", desc: `${bookmarks?.length || 0} recipes`, action: onGoToSaved },
+              { id: "meal-planner", icon: "📅", label: "Meal Planner", desc: "Plan your week" },
+              { id: "pantry", icon: "🥘", label: "Pantry Mode", desc: "Cook what you have" },
+              { id: "ask-ai-history", icon: "✨", label: "Ask AI", desc: "Past conversations" },
+              { id: "saved", icon: "🔖", label: "Saved Recipes", desc: `${bookmarks?.length || 0} recipes`, action: onGoToSaved },
             ].map(item => (
               <div key={item.id} onClick={item.action || (() => onNavigate(item.id))} style={{ background: B.bg, borderRadius: "14px", padding: "14px", cursor: "pointer", transition: "background 0.15s" }}
                 onMouseEnter={e => e.currentTarget.style.background = "#F0EDE8"}
@@ -1679,7 +1712,7 @@ const ProfileView = ({ user, isPro, subscription, onSignIn, onSignOut, onUpgrade
           <div style={{ marginBottom: "16px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
               <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "15px", color: B.dark }}>Recently Saved</div>
-              <span onClick={onGoToSaved} style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.orange, fontWeight: 600, cursor: "pointer" }}>See all {bookmarks.length} \u2192</span>
+              <span onClick={onGoToSaved} style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: B.orange, fontWeight: 600, cursor: "pointer" }}>See all {bookmarks.length} →</span>
             </div>
             <div style={{ display: "flex", gap: "10px", overflowX: "auto", scrollbarWidth: "none", paddingBottom: "4px" }}>
               {bookmarks.slice(0, 6).map((r, i) => (
@@ -1699,12 +1732,12 @@ const ProfileView = ({ user, isPro, subscription, onSignIn, onSignOut, onUpgrade
             <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: "17px", color: "#fff", marginBottom: "10px" }}>Unlock Your Personal AI Chef</div>
             {["Unlimited AI food discovery", "AI Meal Planner", "Transform any recipe", "Pantry to meal suggestions", "Unlimited recipe adaptations", "Smarter, personalised recommendations"].map(f => (
               <div key={f} style={{ display: "flex", gap: "8px", marginBottom: "7px", alignItems: "center" }}>
-                <span style={{ color: B.orange, fontSize: "12px", fontWeight: 700, flexShrink: 0 }}>\u2713</span>
+                <span style={{ color: B.orange, fontSize: "12px", fontWeight: 700, flexShrink: 0 }}>✓</span>
                 <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.75)" }}>{f}</span>
               </div>
             ))}
             <div style={{ display: "flex", background: "rgba(255,255,255,0.08)", borderRadius: "10px", padding: "3px", marginTop: "14px", marginBottom: "12px" }}>
-              {[["monthly", "Monthly"], ["annual", "Annual \u2014 save 33%"]].map(([id, label]) => (
+              {[["monthly", "Monthly"], ["annual", "Annual — save 33%"]].map(([id, label]) => (
                 <button key={id} onClick={() => setBillingCycle(id)} style={{ flex: 1, padding: "8px", border: "none", borderRadius: "8px", background: billingCycle === id ? B.orange : "transparent", color: "#fff", fontFamily: "'Inter', sans-serif", fontSize: "12px", fontWeight: billingCycle === id ? 700 : 400, cursor: "pointer" }}>{label}</button>
               ))}
             </div>
@@ -2076,7 +2109,7 @@ function AppInner() {
       )}
 
       {tab === "restaurants" && (
-        <RestaurantsView onBack={() => handleTabChange("home")} user={user} />
+        <RestaurantsView user={user} />
       )}
 
       {tab === "profile" && (

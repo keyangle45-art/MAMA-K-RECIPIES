@@ -1,0 +1,81 @@
+{
+  "functions": {
+    "api/recipes.js": {
+      "maxDuration": 30
+    },
+    "api/feed.js": {
+      "maxDuration": 30
+    },
+    "api/payment.js": {
+      "maxDuration": 15
+    },
+    "api/webhook.js": {
+      "maxDuration": 15
+    },
+    "api/seed.js": {
+      "maxDuration": 60
+    },
+    "api/recommendations.js": {
+      "maxDuration": 25
+    },
+    "api/transform.js": {
+      "maxDuration": 20
+    },
+    "api/ai-tools.js": {
+      "maxDuration": 30
+    },
+    "api/ops.js": {
+      "maxDuration": 30
+    }
+  },
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=63072000; includeSubDomains; preload"
+        }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/debug",
+      "destination": "/api/ops?task=debug"
+    },
+    {
+      "source": "/api/index-status",
+      "destination": "/api/ops?task=index-status"
+    },
+    {
+      "source": "/api/reindex-existing",
+      "destination": "/api/ops?task=reindex-existing"
+    },
+    {
+      "source": "/api/track-view",
+      "destination": "/api/ops?task=track-view"
+    }
+  ]
+}
